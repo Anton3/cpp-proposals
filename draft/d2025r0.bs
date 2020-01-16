@@ -6,8 +6,8 @@ Audience: EWGI, EWG
 Status: D
 Group: WG21
 URL:
-!Current Source: <a href="https://github.com/Anton3/cpp-proposals/blob/master/draft/d2025r0-guaranteed-copy-elision.bs">https://github.com/Anton3/cpp-proposals/blob/master/draft/d2025r0-guaranteed-copy-elision.bs</a>
-!Current: <a href="https://github.com/Anton3/cpp-proposals/blob/master/draft/d2025r0-guaranteed-copy-elision.html">https://github.com/Anton3/cpp-proposals/blob/master/draft/d2025r0-guaranteed-copy-elision.html</a>
+!Current Source: <a href="https://github.com/Anton3/cpp-proposals/blob/master/draft/d2025r0.bs">https://github.com/Anton3/cpp-proposals/blob/master/draft/d2025r0.bs</a>
+!Current: <a href="https://github.com/Anton3/cpp-proposals/blob/master/draft/d2025r0.html">https://github.com/Anton3/cpp-proposals/blob/master/draft/d2025r0.html</a>
 Editor: Anton Zhilin, antonyzhilin@gmail.com
 Markup Shorthands: markdown yes, biblio yes, markup yes
 Default Highlight: c++
