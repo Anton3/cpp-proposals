@@ -1,0 +1,223 @@
+<pre class='metadata'>
+Title: Transparent lambdas
+Shortname: Dnnnn
+Revision: 0
+Audience: EWGI, EWG
+Status: D
+Group: WG21
+URL:
+!Current Source: <a href="https://github.com/Anton3/cpp-proposals/blob/master/draft/transparent-lambdas.bs">https://github.com/Anton3/cpp-proposals/blob/master/draft/transparent-lambdas.bs</a>
+!Current: <a href="https://github.com/Anton3/cpp-proposals/blob/master/draft/transparent-lambdas.html">https://github.com/Anton3/cpp-proposals/blob/master/draft/transparent-lambdas.html</a>
+Editor: Anton Zhilin, antonyzhilin@gmail.com
+Markup Shorthands: markdown yes, biblio yes, markup yes
+Default Highlight: c++
+Abstract:
+  This proposal aims to provide a new abbreviated lambda syntax, which is transparent and mitigates some of [[!P0573R2]]'s issues.
+Date: 2020-01-17
+</pre>
+
+<style>
+ins {
+  background-color: #CCFFCC;
+  text-decoration: underline;
+}
+del {
+  background-color: #FFCACA;
+  text-decoration: line-through;
+}
+.warning-note {
+  background-color: #FCFAEE;
+  border-color: #E0CB52;
+  overflow-x: auto;
+  overflow-y: auto;
+  clear: both;
+}
+sub {
+  vertical-align: sub
+  font-size: 70%;
+}
+</style>
+
+# Motivation and scope # {#motivation}
+
+[[!P0573R2]] introduces a notion of transparent functions, which aim to behave as close as possible to as if their body was directly inserted into the caller (except that their arguments are only computed a single time).
+
+As described in the mentioned proposal, current function declarations and lambda-expressions have multiple problems with transparent functions:
+
+- They take arguments and return by value by default (`auto`), while we usually want to accept forwarding references and retain ref-qualifier for the return type (`decltype(auto)`). Copies should be explicit
+- They are not `noexcept`-correct, i.e. they are not automatically `noexcept` if all the expressions within their body are non-throwing
+- They aren't SFINAE-friendly by default
+
+There are additional problems not mentioned in [[!P0573R2]]:
+
+- Function declarations are not `constexpr`-correct, i.e. they aren't automatically `constexpr` if they satisfy the requirements for a constexpr function
+- Another problem is discussed in the following subsection
+
+## Boilerplate ## {#boilerplate}
+
+Lambda expressions are meant to reduce boilerplate, but today's lambdas, especially short ones, are cumbersome to use. Compare to other programming languages:
+
+- A lambda returning 42:
+    - In Haskell: `\() -> 42` (ignoring the nuances)
+    - In Java: `() -> 42`
+    - In Kotlin: `{ 42 }`
+    - In Swift: `{ 42 }`
+    - In C#: `() => 42`
+    - In Rust: `|| 42`
+    - In C++: `[] { return 42; }`
+    - In C++ with [[P0573R2]]: `[]() => 42`
+- A lambda multiplying its argument by 2:
+    - In Haskell: `\x -> x * 2`
+    - In Java: `x -> x * 2`
+    - In Kotlin: `{ x -> x * 2 }`
+    - In Swift: `{ x in x * 2 }`
+    - In C#: `x => x * 2`
+    - In Rust: `|x| x * 2 `
+    - In C++: `[](auto&& x) { return x * 2; }`
+    - In C++ with [[P0573R2]]: `[](x) => x * 2`
+- A lambda that adds its arguments:
+    - In Haskell: `\x y -> x + y`
+    - In Java: `(x, y) -> x + y`
+    - In Kotlin: `{ x, y -> x + y }`
+    - In Swift: `{ x, y in x + y }`
+    - In C#: `(x, y) => x + y`
+    - In Rust: `|x, y| x + y`
+    - In C++: `[](auto&& x, auto&& y) { return x + y; }`
+    - In C++ with [[P0573R2]]: `[](x, y) => x + y`
+
+ Other programming languages:
+
+- Do not require an explicit capture clause, assuming capture by reference
+- Do not require explicit parameter types, inferring them from context or assuming most general types
+- Do not require an explicit `return`, assuming it
+- Some languages have special short forms for zero and single-parameter lambdas
+
+[[P0927R2]] discusses how their "implicit lambdas" could be replaced with a lambda-based approach, but the syntax for a zero-parameter lambda expression would need to be as terse as possible.
+
+# Proposed solution # {#solution}
+
+The primary proposed syntax for transparent lambda expressions is of the general form `|param1, param2, param3| expr`, as in Rust.
+
+Such a lambda:
+
+- Assumes capture by reference `[&]`, except when the lambda is non-local, then assumes no capture `[]`
+- Assumes `auto&&` declarators for all the parameters (attributes are allowed on the parameters and on the lambda itself)
+- Is equivalent to a normal lambda with a single `return` statement, except when the return type is `void`, then it is equivalent to a normal lambda with an expression-statement
+- Avoids copies by deducing the return type using `decltype((expr))`. Users will have to make copies explicitly where appropriate, that could be done using `auto` operator proposed by [[P0849R2]]
+- Is SFINAE-friendly
+- Is `noexcept`-correct: marked as `noexcept` unless its expression is potentially-throwing
+
+Capture customization **is possible** using `|param1, param2, param3| [captures] expr` syntax.
+
+## Proposed syntax ## {#syntax}
+
+<blockquote>
+<a href="http://eel.is/c++draft/expr#nt:expression">*expression*</a>:
+    * […]
+    * <i>[=transparent-lambda-expression=]</i>
+
+<i><dfn dfn-type="dfn">transparent-lambda-expression</dfn>:</i>
+    * `|` <i>[=transparent-lambda-parameter-list=]</i><sub>opt</sub> `|` <a href="http://eel.is/c++draft/expr#nt:lambda-expression">*lambda-introducer*</a><sub>opt</sub> <a href="http://eel.is/c++draft/dcl.attr.grammar#nt:attribute-specifier-seq">*attribute-specifier-seq*</a><sub>opt</sub> <a href="http://eel.is/c++draft/expr#nt:assignment-expression">*assignment-expression*</a>
+ 
+<i><dfn dfn-type="dfn">transparent-lambda-parameter-list</dfn>:</i>
+    * <i>[=transparent-lambda-parameter=]</i>
+	* <i>[=transparent-lambda-parameter-list=]</i> `,` <i>[=transparent-lambda-parameter=]</i>
+
+<i><dfn dfn-type="dfn">transparent-lambda-parameter</dfn>:</i>
+    * <a href="http://eel.is/c++draft/dcl.attr.grammar#nt:attribute-specifier-seq">*attribute-specifier-seq*</a><sub>opt</sub> <a href="http://eel.is/c++draft/lex.name#nt:identifier">*identifier*</a> `...`<sub>opt</sub>
+</blockquote>
+
+## Optional extension: abbreviated lambdas with multiple statements ## {#statements}
+
+The syntax in this case is:
+
+```cpp
+|params| [optional-captures] { statement… optional-expr }
+```
+
+Such a lambda:
+
+- Has all the traits of a single-expression abbreviated lambda, except that…
+- Is not SFINAE-friendly
+- Implicitly `return`s the tailing (semicolon-less) expression, unless there is none such
+- Deduces the return type using the first `return` statement or, if there is none such, the trailing expression
+
+## Optional extension: transparent function declarations ## {#function-decl}
+
+The syntax in this case is:
+
+```cpp
+auto f(auto&& x, auto&& y) transparent { statement… optional-expr }
+```
+
+Such a function:
+
+- Is SFINAE-friendly iff the body only consists of the `expr`
+- Is `noexcept`-correct
+- Is `constexpr`-correct
+- Implicitly `return`s the tailing (semicolon-less) expression, unless there is none such
+- Avoids copies by deducing the return type using `decltype((expr-in-first-return))`. Users will have to make copies explicitly where appropriate, that could be done using `auto` operator proposed by [[P0849R2]]
+
+# Discussion # {#discussion}
+
+## Syntax choice ## {#syntax-choice}
+
+For the purposes of integration with SFINAE-friendliness and `noexcept`-correctness of [[!P0573R2]], we will only discuss single-expression lambdas.
+
+[[P0927R2]] and some other applications require that the lambda syntax is as brief as possible. 
+
+Any abbreviated lambda expression syntax must have a list of parameters (which may consist of zero or one parameter) and an expression, which is its body. It will therefore have a general form of:
+
+`… param1, param2, param3 … expr …`
+
+Because `param1` would otherwise create an ambiguity (consider usage of lambda expression as a higher-order function argument), some separator is required before `param1`. For clarity when reading, some separator should be required before `expr`. A separator after `expr` is not required; `expr` is then defined to be an *assignment-expression*. The choice then boils down to choosing the appropriate "framing" of parameters. Several choices have been reviewed:
+
+- `(x, y) f(x)` is ambiguous with a C-style cast (single-parameter case) or with a comma-expression (multiple-parameter case)
+- `[x, y] f(x)` is ambiguous with normal lambda expressions
+- `{x, y} f(x)` is ambiguous with initializer-lists
+- `<x, y> f(x)` visually conflicts with `<…>` usually meaning templates in C++
+- `|x, y| f(x)` is potentially ambiguous with `|` and `||` operators, but not in practice, because those are invalid where a lambda-expression can start
+
+## It will be difficult to support normal lambda features with the chosen syntax ## {#features}
+
+Transparent lambdas are intended to behave exactly the same way as their expression. There is no need to support:
+
+- Explicit parameter types
+- (Concept) *type-constrant*s on the parameter types
+- A *requires-clause* or a trailing *requires-clause*
+- A *trailing-return-type*
+- A *template-parameter-list*
+- A *noexcept-specifier*
+- A *decl-specifier-seq*
+    - The lambda is `mutable` if it is local
+    - The lambda is `constexpr` when possible
+    - The lambda is `consteval` when required
+
+On the other hand, a transparent lambda can contain:
+
+- A `[`*lambda-capture*`]`
+- *attribute-specifier-seq* on parameters
+- *attribute-specifier-seq* on the lambda itself
+
+## Alternative syntax ## {#alternative}
+
+An even more terse lambda syntax is possible, which would look as follows:
+
+```cpp
+:42         // instead of || 42
+x: x * 2    // instead of |x| x * 2
+x y: x + y  // instead of |x, y| x + y
+```
+
+In order to avoid parsing ambiguity, an *expression-statement* cannot begin with such a transparent lambda expression:
+
+```cpp
+:42;              // error, label expected before ":"
+foo(:42);         // OK, transparent lambda
+
+x: x * 2;         // OK, label "x:" and expression-statement "x * 2"
+foo(x: x * 2);    // OK, transparent lambda
+
+x y: x * 2;       // error, unexpected ":" after declaration "x y"
+foo(x y: x * 2);  // OK, transparent lambda
+```
