@@ -459,7 +459,7 @@ Without the proposed wording applied, the exception object will be copied to `w`
 If we remove the move-constructor from `widget` (but leave the copy-constsuctor; most standard exception types are defined as that), then <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> can apply regardless of `toss_a_coin`. In case it is applied, `w` is treated as an lvalue reference, implicit movability of `w` does not matter, and `return w;` performs a copy, which cannot be elided. A sufficiently smart compiler can avoid all copies and moves on the path where `toss_a_coin()` returns `false`.
 
 With the proposed wording applied, the exception object will be copied to `w`, and copy elision is guaranteed for `return w;`. <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a>, if applied,
-prevents guaranteed copy elision, requiring the compiler to prove that this does not change the meaning of the program. From the optimization point-of-view, almost nothing changes, but it is guaranteed that no more than 1 copy is made.
+prevents guaranteed copy elision, requiring the compiler to prove that this does not change the meaning of the program. From the optimization point-of-view, almost nothing changes, but it is guaranteed that no more than 1 copy is performed.
 
 Overall, it seems that this is an edge case that can be removed painlessly. To guarantee the abscence of copies for the exception object, one should catch the exception by reference, instead of catching by copy and complaining about the copy. On the other hand, when a copy is intended, this proposal ensures that the caught exception is treated as well as any other variable.
 
@@ -751,4 +751,4 @@ For `pin` to be an aggregate, <a href="http://eel.is/c++draft/dcl.init.aggr">[dc
 
 Thanks to Agustín Bergé, Arthur O'Dwyer, Krystian Stasiowski and everyone else who provided feedback on a draft of this proposal.
 
-Special thanks to Antony Polukhin for championing the paper.
+Special thanks to Antony Polukhin for championing the proposal.
