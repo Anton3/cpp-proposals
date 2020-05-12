@@ -296,7 +296,7 @@ A variable with automatic storage duration is called a <dfn dfn-type="abstract-o
 
 - the type of the variable is a class type, is not `volatile`-qualified, and is the same (ignoring cv-qualification) as the return type of the immediately enclosing function or *lambda-expression*, and
 
-- at least one (<a href="http://eel.is/c++draft/stmt.if">[stmt.if]</a>) `return` statement in its potential scope (<a href="http://eel.is/c++draft/basic.scope">[basic.scope]</a>) and in the same immediately enclosing function or *lambda-expression* as the variable declaration [$to return a variable|returns$] the variable. [ *Note:* The enclosing function cannot be a coroutine. — *end note* ]
+- at least one non-discarded (<a href="http://eel.is/c++draft/stmt.if">[stmt.if]</a>) `return` statement in its potential scope (<a href="http://eel.is/c++draft/basic.scope">[basic.scope]</a>) and in the same immediately enclosing function or *lambda-expression* as the variable declaration [$to return a variable|returns$] the variable. [ *Note:* The enclosing function cannot be a coroutine. — *end note* ]
 
 If additionally, all of the mentioned `return` statements [$to return a variable|return$] the variable, then the variable is called a <dfn dfn-type="abstract-op">return variable</dfn>.
 
