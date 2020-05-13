@@ -138,7 +138,7 @@ If copy elision for a returned variable is allowed, and all <a href="http://eel.
 
 To state the gist of the requirement even easier (and even less rigorous):
 
-> Copy elision is guaranteed for `return x;` if every `return` "seen" by `x` is `return x;`.
+> Copy elision is guaranteed for `return x;` if every `return` "seen" by `x` is `return x;`
 
 ## Examples ## {#examples}
 
@@ -191,7 +191,7 @@ widget setup_widget() {
 
 ### Example 4 ### {#ex-4}
 
-Copy elision is not guaranteed at line 4, because `return` statement on line 6, which is within the potential scope of `w`, returns non-`w`.
+Copy elision is not guaranteed at line 4, because the `return` statement on line 6, which is within the potential scope of `w`, returns non-`w`.
 
 <xmp line-numbers="on">
 widget setup_widget() {
@@ -208,7 +208,7 @@ widget setup_widget() {
 
 ### Example 5 ### {#ex-5}
 
-The example above can be "fixed" so that guaranteed copy elision does apply. Now all `return` statements within the potential scope of `w` (the one on line 4) returns `w`.
+The example above can be "fixed" so that guaranteed copy elision does apply. Now all the `return` statements within the potential scope of `w` (the one on line 4) return `w`.
 
 <xmp line-numbers="on">
 widget setup_widget() {
@@ -226,7 +226,7 @@ widget setup_widget() {
 
 ### Example 6 ### {#ex-6}
 
-Here, `return` statement at line 3 lies in the potential scope of `one`, which inhibits guaranteed copy elision.
+Here, `return` statement at line 5 is within the potential scope of `one` and thus inhibits guaranteed copy elision.
 
 <xmp line-numbers="on">
 widget test() {

@@ -1797,7 +1797,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
    <p>(For the purposes of brevity, the explanation above is not rigorous; see <a href="#wording">§ 4 Proposed wording</a> for a rigorous explanation.)</p>
    <p>To state the gist of the requirement even easier (and even less rigorous):</p>
    <blockquote>
-    <p>Copy elision is guaranteed for <code class="highlight"><c- k>return</c-> <c- n>x</c-><c- p>;</c-></code> if every <code class="highlight"><c- k>return</c-></code> "seen" by <code class="highlight"><c- n>x</c-></code> is <code class="highlight"><c- k>return</c-> <c- n>x</c-><c- p>;</c-></code>.</p>
+    <p>Copy elision is guaranteed for <code class="highlight"><c- k>return</c-> <c- n>x</c-><c- p>;</c-></code> if every <code class="highlight"><c- k>return</c-></code> "seen" by <code class="highlight"><c- n>x</c-></code> is <code class="highlight"><c- k>return</c-> <c- n>x</c-><c- p>;</c-></code></p>
    </blockquote>
    <h3 class="heading settled" data-level="3.1" id="examples"><span class="secno">3.1. </span><span class="content">Examples</span><a class="self-link" href="#examples"></a></h3>
    <p>Legend:</p>
@@ -1830,14 +1830,14 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
      <p>✓ Guaranteed copy elision at lines 4 and 7. No copies or moves needed at line 9</p>
    </ul>
    <h4 class="heading settled" data-level="3.1.4" id="ex-4"><span class="secno">3.1.4. </span><span class="content">Example 4</span><a class="self-link" href="#ex-4"></a></h4>
-   <p>Copy elision is not guaranteed at line 4, because <code class="highlight"><c- k>return</c-></code> statement on line 6, which is within the potential scope of <code class="highlight"><c- n>w</c-></code>, returns non-<code class="highlight"><c- n>w</c-></code>.</p>
+   <p>Copy elision is not guaranteed at line 4, because the <code class="highlight"><c- k>return</c-></code> statement on line 6, which is within the potential scope of <code class="highlight"><c- n>w</c-></code>, returns non-<code class="highlight"><c- n>w</c-></code>.</p>
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- n>widget</c-> <c- nf>setup_widget</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- k>auto</c-> <c- n>w</c-> <c- o>=</c-> <c- n>widget</c-><c- p>(</c-><c- mi>1</c-><c- p>);</c-></span><span class="line-no" data-line="3"></span><span class="line">  <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- p>{</c-></span><span class="line-no" data-line="4"></span><span class="line">    <c- k>return</c-> <c- n>w</c-><c- p>;</c->  <c- c1>//!</c-></span><span class="line-no" data-line="5"></span><span class="line">  <c- p>}</c-> <c- k>else</c-> <c- p>{</c-></span><span class="line-no" data-line="6"></span><span class="line">    <c- k>return</c-> <c- n>widget</c-><c- p>(</c-><c- mi>2</c-><c- p>);</c-></span><span class="line-no" data-line="7"></span><span class="line">  <c- p>}</c-></span><span class="line-no" data-line="8"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
      <p>✗✓ Move or non-guaranteed copy elision at line 4. No copies or moves needed at line 6</p>
    </ul>
    <h4 class="heading settled" data-level="3.1.5" id="ex-5"><span class="secno">3.1.5. </span><span class="content">Example 5</span><a class="self-link" href="#ex-5"></a></h4>
-   <p>The example above can be "fixed" so that guaranteed copy elision does apply. Now all <code class="highlight"><c- k>return</c-></code> statements within the potential scope of <code class="highlight"><c- n>w</c-></code> (the one on line 4) returns <code class="highlight"><c- n>w</c-></code>.</p>
+   <p>The example above can be "fixed" so that guaranteed copy elision does apply. Now all the <code class="highlight"><c- k>return</c-></code> statements within the potential scope of <code class="highlight"><c- n>w</c-></code> (the one on line 4) return <code class="highlight"><c- n>w</c-></code>.</p>
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- n>widget</c-> <c- nf>setup_widget</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- p>{</c-></span><span class="line-no" data-line="3"></span><span class="line">    <c- k>auto</c-> <c- n>w</c-> <c- o>=</c-> <c- n>widget</c-><c- p>(</c-><c- mi>1</c-><c- p>);</c-></span><span class="line-no" data-line="4"></span><span class="line">    <c- k>return</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="5"></span><span class="line">  <c- p>}</c-> <c- k>else</c-> <c- p>{</c-></span><span class="line-no" data-line="6"></span><span class="line">    <c- k>return</c-> <c- n>widget</c-><c- p>(</c-><c- mi>2</c-><c- p>);</c-></span><span class="line-no" data-line="7"></span><span class="line">  <c- p>}</c-></span><span class="line-no" data-line="8"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
@@ -1846,7 +1846,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
      <p>✓ Guaranteed copy elision at line 4. No copies or moves needed at line 6</p>
    </ul>
    <h4 class="heading settled" data-level="3.1.6" id="ex-6"><span class="secno">3.1.6. </span><span class="content">Example 6</span><a class="self-link" href="#ex-6"></a></h4>
-   <p>Here, <code class="highlight"><c- k>return</c-></code> statement at line 3 lies in the potential scope of <code class="highlight"><c- n>one</c-></code>, which inhibits guaranteed copy elision.</p>
+   <p>Here, <code class="highlight"><c- k>return</c-></code> statement at line 5 is within the potential scope of <code class="highlight"><c- n>one</c-></code> and thus inhibits guaranteed copy elision.</p>
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- n>widget</c-> <c- nf>test</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- n>widget</c-> <c- n>one</c-><c- p>;</c-></span><span class="line-no" data-line="3"></span><span class="line">  <c- k>if</c-> <c- p>(</c-><c- n>toss_a_coin</c-><c- p>())</c-> <c- k>return</c-> <c- n>one</c-><c- p>;</c->  <c- c1>//!</c-></span><span class="line-no" data-line="4"></span><span class="line">  <c- n>widget</c-> <c- n>two</c-><c- p>;</c-></span><span class="line-no" data-line="5"></span><span class="line">  <c- k>return</c-> <c- n>two</c-><c- p>;</c-></span><span class="line-no" data-line="6"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
