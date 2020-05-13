@@ -567,12 +567,12 @@ widget foo() {
 }
 </xmp>
 
-**Not taking <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> into account**
+<b>Not applying <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a></b>
 
 - ✗ At line 13, copy. At line 15, move or non-guaranteed copy elision
 - ✓ At line 13, copy. At line 15, guaranteed copy elision
 
-**Applying <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> (non-guaranteed)**
+<b>Applying <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> (non-guaranteed)</b>
 
 - ✗✓ At line 13, `w` is an alias for the exception in flight. At line 15, copy (copyability is not required if the compiler can prove that `toss_a_coin` never returns `true`) or copy elision (<a href="http://eel.is/c++draft/class.copy.elision#1.1">[class.copy.elision]/(1.1)</a>, highly impractical in this case). The compiler must prove that this application of <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> does not change the meaning of the program.
 
