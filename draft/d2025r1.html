@@ -1895,9 +1895,9 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- b>void</c-> <c- nf>foo</c-><c- p>();</c->  <c- c1>// throws a widget</c-></span><span class="line-no" data-line="2"></span><span class="line"></span><span class="line-no" data-line="3"></span><span class="line"><c- n>widget</c-> <c- nf>test</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="4"></span><span class="line">  <c- k>try</c-> <c- p>{</c-></span><span class="line-no" data-line="5"></span><span class="line">    <c- n>foo</c-><c- p>();</c-></span><span class="line-no" data-line="6"></span><span class="line">  <c- p>}</c-> <c- k>catch</c-> <c- p>(</c-><c- n>widget</c-> <c- n>w</c-><c- p>)</c-> <c- p>{</c->  <c- c1>//!</c-></span><span class="line-no" data-line="7"></span><span class="line">    <c- n>watch</c-><c- p>(</c-><c- n>w</c-><c- p>);</c-></span><span class="line-no" data-line="8"></span><span class="line">    <c- k>return</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="9"></span><span class="line">  <c- p>}</c-></span><span class="line-no" data-line="10"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
-     <p>✗ Copy or non-guaranteed copy elision at line 7. Move or non-guaranteed copy elision (<a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a>) at line 9</p>
+     <p>✗ Copy or non-guaranteed copy elision at line 6. Move or non-guaranteed copy elision (<a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a>) at line 8</p>
     <li data-md>
-     <p>✓ Copy or non-guaranteed copy elision at line 7. Guaranteed copy elision at line 9</p>
+     <p>✓ Copy or non-guaranteed copy elision at line 6. Guaranteed copy elision at line 8</p>
    </ul>
    <p>See also: <a href="#req-value-exeptions">§ 5.2.3 Exception-declarations can introduce return variables</a></p>
    <h4 class="heading settled" data-level="3.1.12" id="ex-12"><span class="secno">3.1.12. </span><span class="content">Example 12</span><a class="self-link" href="#ex-12"></a></h4>

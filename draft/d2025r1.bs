@@ -347,8 +347,8 @@ widget test() {
 }
 </xmp>
 
-- ✗ Copy or non-guaranteed copy elision at line 7. Move or non-guaranteed copy elision (<a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a>) at line 9
-- ✓ Copy or non-guaranteed copy elision at line 7. Guaranteed copy elision at line 9
+- ✗ Copy or non-guaranteed copy elision at line 6. Move or non-guaranteed copy elision (<a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a>) at line 8
+- ✓ Copy or non-guaranteed copy elision at line 6. Guaranteed copy elision at line 8
 
 See also: [[#req-value-exeptions]]
 
