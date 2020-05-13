@@ -11,9 +11,10 @@ URL:
 Editor: Anton Zhilin, antonyzhilin@gmail.com
 Markup Shorthands: markdown yes, biblio yes, markup yes, dfn yes
 Default Highlight: c++
+Line Numbers: off
 Abstract:
-  This proposal aims to provide guaranteed copy elision for common cases of local variables being returned from a function.
-Date: 2020-05-06
+  This proposal aims to provide guaranteed copy elision for common cases of local variables being returned from a function, a.k.a. guaranteed NRVO.
+Date: 2020-05-13
 </pre>
 
 <style>
@@ -52,16 +53,18 @@ R1 (post-Prague):
 - Added more [[#examples]]
 - Added [[#pin]] subsection
 - Added [[#more-temporaries]] subsection
+- Added [[#optional-mark]] subsection
+- Added [[#complex-expressions]] subsection
 
 # Motivation # {#motivation}
 
 <dfn dfn-type="abstract-op" lt="guaranteed copy elision">Guaranteed copy elision</dfn> means that in some scenarios that were (perhaps, potentially or previously) covered by <a href="http://eel.is/c++draft/class.copy.elision#3">copy elision</a>, copy-initialisation is now guaranteed not to happen, and the type that was previously potentially copied can now be non-copyable, non-movable. With the accepted [[P0135R0]] proposal, C++17 provides guaranteed copy elision for when a prvalue is returned from a function — this flavor of copy elision is known as Return Value Optimization (RVO). (The absence of copies flows naturally from the updated value categories, so it is no longer copy elision or an optimization.)
 
-```cpp
+<xmp>
 widget setup_widget(int x) {
   return widget(x);  // guaranteed "RVO"
 }
-```
+</xmp>
 
 Meanwhile, the other cases of copy elision are still optional. The flavor of copy elision that is allowed when a local variable is [$to return a variable|returned$] is known as Named Return Value Optimization (NRVO). As of C++20, NRVO is not guaranteed, which sometimes enforces rewriting the code in a way that is less readable or efficient.
 
@@ -69,13 +72,13 @@ Meanwhile, the other cases of copy elision are still optional. The flavor of cop
 
 Sometimes we want to create an object, set it up and return it.
 
-```cpp
+<xmp>
 widget setup_widget(int x) {
   widget w;
   w.set_x(x);
   return w;  // non-guaranteed NRVO
 }
-```
+</xmp>
 
 Implementations usually perform NRVO in such simple cases, but `widget` must be at least movable. This situation is unacceptable in these cases, among others:
 
@@ -94,22 +97,22 @@ Both "solutions" are often viewed as anti-patterns. A proper solution should all
 
 With [[P1144R5]], we may be able to relocate elements out of containers, which should be more efficient:
 
-```cpp
+<xmp>
 widget widget_owner::pilfer() {
   widget w = this->relocate_internal();
   this->cleanup_storage();
   return w;  // non-guaranteed NRVO
 }
-```
+</xmp>
 
 Unfortunately, such a clean-up work leads to the abscence of guaranteed copy elision. It can, however, be worked around using a facility like `scope_success` from [[P0052R9]]:
 
-```cpp
+<xmp>
 widget widget_owner::pilfer() {
   auto s = scope_success([&]{ this->cleanup_storage(); });
   return this->relocate_internal();  // guaranteed "RVO"
 }
-```
+</xmp>
 
 The code rewritten in such a way is less straightforward and contains the potential overhead of `scope_success`.
 
@@ -117,13 +120,13 @@ The code rewritten in such a way is less straightforward and contains the potent
 
 [[P1046R2]] proposes automatically generating `operator++(int)` for a type that implements `operator+=`. Its definition would look approximately as follows:
 
-```cpp
+<xmp>
 T T::operator++(int) {
   T result = *this;  // intended copy
   *this += 1;
   return result;  // guaranteed NRVO
 }
-```
+</xmp>
 
 In order to deliver on the promise of guaranteed NRVO there, we would have to use the `scope_success` trick described above.
 
@@ -133,30 +136,45 @@ If copy elision for a returned variable is allowed, and all <a href="http://eel.
 
 (For the purposes of brevity, the explanation above is not rigorous; see [[#wording]] for a rigorous explanation.)
 
+To state the gist of the requirement even easier (and even less rigorous):
+
+> Copy elision is guaranteed for `return x;` if every `return` "seen" by `x` is `return x;`.
+
 ## Examples ## {#examples}
 
-Constructing and returning a `widget`, guaranteed copy elision applies (since C++17):
+Legend:
 
-```cpp
+- ✗ Old
+- ✓ Proposed
+
+### Example 1 ### {#ex-1}
+
+<xmp line-numbers="on">
 widget setup_widget(int x) {
   return widget(x);
 }
-```
+</xmp>
 
-Constructing, "cooking" and returning a `widget`, guaranteed copy elision applies:
+- ✗ No copies or moves needed at line 2
+- ✓ No copies or moves needed at line 2
 
-```cpp
+### Example 2 ### {#ex-2}
+
+<xmp line-numbers="on">
 widget setup_widget(int x) {
   auto w = widget(x);
   int y = process(x);
   w.set_y(y);
   return w;
 }
-```
+</xmp>
 
-A more contrived example where guaranteed copy elision applies:
+- ✗ Move or non-guaranteed copy elision at line 5
+- ✓ Guaranteed copy elision at line 5
 
-```cpp
+### Example 3 ### {#ex-3}
+
+<xmp line-numbers="on">
 widget setup_widget() {
   while (…) {
     auto w = widget(1);
@@ -167,11 +185,16 @@ widget setup_widget() {
   }
   return widget(2);
 }
-```
+</xmp>
 
-An example where guaranteed copy elision does not apply:
+- ✗ Move or non-guaranteed copy elision at lines 4 and 7. No copies or moves needed at line 9
+- ✓ Guaranteed copy elision at lines 4 and 7. No copies or moves needed at line 9
 
-<xmp>
+### Example 4 ### {#ex-4}
+
+Copy elision is not guaranteed at line 4, because `return` statement on line 6, which is within the potential scope of `w`, returns non-`w`.
+
+<xmp line-numbers="on">
 widget setup_widget() {
   auto w = widget(1);
   if (…) {
@@ -182,9 +205,14 @@ widget setup_widget() {
 }
 </xmp>
 
-The example above can be "fixed" so that guaranteed copy elision does apply:
+- ✗ Move or non-guaranteed copy elision at line 4. No copies or moves needed at line 6
+- ✓ Move or non-guaranteed copy elision at line 4. No copies or moves needed at line 6
 
-```cpp
+### Example 5 ### {#ex-5}
+
+The example above can be "fixed" so that guaranteed copy elision does apply. Now all `return` statements within the potential scope of `w` (the one on line 4) returns `w`.
+
+<xmp line-numbers="on">
 widget setup_widget() {
   if (…) {
     auto w = widget(1);
@@ -193,23 +221,33 @@ widget setup_widget() {
     return widget(2);
   }
 }
-```
+</xmp>
 
-In the following example, `return two;` lies in the potential scope of `one`, so guaranteed copy elision does not apply to `one`:
+- ✗ Move or non-guaranteed copy elision at line 4. No copies or moves needed at line 6
+- ✓ Guaranteed copy elision at line 4. No copies or moves needed at line 6
 
-<xmp>
+### Example 6 ### {#ex-6}
+
+Here, `return` statement at line 3 lies in the potential scope of `one`, which inhibits guaranteed copy elision.
+
+<xmp line-numbers="on">
 widget test() {
   widget one;
-  return one;  //!
+  if (toss_a_coin()) return one;  //!
   widget two;
   return two;
 }
 </xmp>
 
-Constructing, setting up and passing an object as a parameter using an immediately invoked lambda expression (`consume_widget`'s parameter is directly initialized with `x`):
+- ✗ Move or non-guaranteed copy elision at lines 3 and 5
+- ✓ Move or non-guaranteed copy elision at line 3. Guaranteed copy elision at line 5
 
-```cpp
-void consume_widget(widget);
+### Example 7 ### {#ex-7}
+
+Constructing, setting up and passing an object as a parameter using an immediately invoked lambda expression (`p` is directly initialized under the name of `x`).
+
+<xmp line-numbers="on">
+void consume_widget(widget p);
 
 void test(int x) {
   int y = process(x);
@@ -219,11 +257,16 @@ void test(int x) {
     return w;
   }());
 }
-```
+</xmp>
 
-Guaranteed copy elision is unaffected by a nested class, a lambda capture and a discarded `return` statement:
+- ✗ Move or non-guaranteed copy elision at line 8. No additional copies or moves needed for initialization of `p`
+- ✓ Guaranteed copy elision at line 8. No additional copies or moves needed for initialization of `p`
 
-```cpp
+### Example 8 ### {#ex-8}
+
+Guaranteed copy elision is unaffected by a nested class, a lambda capture and a discarded `return` statement.
+
+<xmp line-numbers="on">
 widget test() {
   widget w;
   struct s { widget f() { return widget(); } };
@@ -231,21 +274,31 @@ widget test() {
   if constexpr (false) { return widget(); }
   return w;
 }
-```
+</xmp>
 
-Guaranteed copy elision applies in constant evaluation context:
+- ✗ Move or non-guaranteed copy elision at line 6
+- ✓ Guaranteed copy elision at line 6
 
-```cpp
+### Example 9 ### {#ex-9}
+
+Guaranteed copy elision will apply in constant evaluation context, and will be guaranteed when possible.
+
+<xmp line-numbers="on">
 constexpr std::mutex test() {
   std::mutex m;
   return m;
 }
 constinit std::mutex m = test();
-```
+</xmp>
 
-Guaranteed copy elision applies to all the 3 return statements. `w1`, `w2` and `w3` will occupy the return slot at different times:
+- ✗ Move at line 6 (copy elision cannot apply)
+- ✓ Guaranteed copy elision at line 6
 
-```cpp
+### Example 10 ### {#ex-10}
+
+Implementation-wise, `w1`, `w2` and `w3` will occupy the return slot at different times. Wording-wise, if we reach line 9, then w1 and w2 are not considered to denote (or have ever denoted) the result object of the function call; they are considered normal local variables then.
+
+<xmp line-numbers="on">
 widget test() {
   {
     {
@@ -258,30 +311,84 @@ widget test() {
   widget w3;
   return w3;
 }
-```
+</xmp>
 
-With proposed wording, copy elision applies for exceptions caught by value, and is guaranteed in this case:
+- ✗ Move or non-guaranteed copy elision at lines 4, 7, 10
+- ✓ Guaranteed copy elision at lines 4, 7, 10
 
-```cpp
+### Example 11 ### {#ex-11}
+
+Copy elision will be allowed for exceptions caught by value. See also: [[#req-value-exeptions]]
+
+<xmp line-numbers="on">
+void foo();
+
 widget test() {
   try {
-    throw widget();
-  } catch (widget w) {
+    foo();
+    throw 0;
+  } catch (widget w) {  //!
+    watch(w);
     return w;
   }
 }
-```
+</xmp>
 
-With proposed wording, copy elision applies for parenthesized names, and will be guaranteed in this case:
+- ✗ Copy or non-guaranteed copy elision at line 8. Move or non-guaranteed copy elision at line 9
+- ✓ Copy or non-guaranteed copy elision at line 8. Guaranteed copy elision at line 9
 
-```cpp
+### Example 12 ### {#ex-12}
+
+Copy elision will be allowed for parenthesized names. See also: [[#req-parentheses]]
+
+<xmp line-numbers="on">
 widget test() {
-  auto w = widget();
-  return ((w));
+  widget x;
+  if (toss_a_coin()) return (x);  //!
+  widget y;
+  return ((y));
 }
-```
+</xmp>
 
-## Proposed wording ## {#wording}
+- ✗ Move at lines 3 and 5 (copy elision cannot apply)
+- ✓ Move or non-guaranteed copy elision at line 3. Guaranteed copy elision at line 5
+
+### Example 13 ### {#ex-13}
+
+For trivially-copiable types, a copy still may be introduced. See also: [[#trivial-temporaries]]
+
+<xmp line-numbers="on">
+struct gadget {
+  gadget* p;
+  gadget() : p(this) {}
+};
+
+gadget test() {
+  gadget x;
+  return x;  //!
+}
+gadget y = test();
+</xmp>
+
+- ✗ Move or non-guaranteed copy elision at line 8. An additional copy may be introduced. It is implementation-defined whether `x` and `y` name the same object
+- ✓ Guaranteed copy elision at line 8. An additional copy may be introduced. It is implementation-defined whether `x` and `y` name the same object
+
+### Example 14 ### {#ex-14}
+
+For non-class types, copy elision does not apply. See also: [[#trivial-temporaries]]
+
+<xmp line-numbers="on">
+int test() {
+  int x;
+  return x;  //!
+}
+int y = test();
+</xmp>
+
+- ✗ Copy at line 3. An additional copy may be introduced. `x` and `y` name different objects
+- ✓ Copy at line 3. An additional copy may be introduced. `x` and `y` name different objects
+
+# Proposed wording # {#wording}
 
 The wording in this section is relative to WG21 draft [[!N4842]].
 
@@ -298,7 +405,7 @@ A variable with automatic storage duration is called a <dfn dfn-type="abstract-o
 
 - at least one non-discarded (<a href="http://eel.is/c++draft/stmt.if">[stmt.if]</a>) `return` statement in its potential scope (<a href="http://eel.is/c++draft/basic.scope">[basic.scope]</a>) and in the same immediately enclosing function or *lambda-expression* as the variable declaration [$to return a variable|returns$] the variable. [ *Note:* The enclosing function cannot be a coroutine. — *end note* ]
 
-If additionally, all of the mentioned `return` statements [$to return a variable|return$] the variable, then the variable is called a <dfn dfn-type="abstract-op">return variable</dfn>.
+If additionally, all of the mentioned `return` statements [$to return a variable|return$] the variable, then the variable is called a <dfn dfn-type="abstract-op">return variable</dfn>. [[ *Note:* A potential return variable shall have an eligible copy and move constructor (<a href="http://eel.is/c++draft/class.copy.ctor">[class.copy.ctor]</a>), unless it is a return variable. — *end note* ]]
 
 If the potential scope of a [$return variable$] is exited in a way other than by executing a statement that [$to return a variable|returns$] it (or destruction of a local variable is terminated by an exception), the return variable is considered a normal local variable that denotes an object of automatic storage duration. [ *Note:* In particular, on exit from the scope, the object is destroyed, among other objects of automatic storage duration, in the reverse order of construction (<a href="http://eel.is/c++draft/stmt.jump">[stmt.jump]</a>). If destruction of a local variable is terminated by an exception, the return variable may be destroyed out of normal order, as per <a href="http://eel.is/c++draft/except.ctor">[except.ctor]</a>. — *end note* ]
 
@@ -375,7 +482,7 @@ Some alternative choices:
 
 ## Have requirements for copy elision changed? ## {#req-change}
 
-There are multiple issues with current wording for copy elision. While <a href="http://eel.is/c++draft/class.copy.elision#3">[class.copy.elision]/3</a> has recently been updated ([[CWG1579]]), <a href="http://eel.is/c++draft/class.copy.elision#1">[class.copy.elision]/1</a> has not. Proposed wording cleans up those issues.
+There are multiple issues with current wording for copy elision. While <a href="http://eel.is/c++draft/class.copy.elision#3">[class.copy.elision]/3</a> has recently been updated ([[P0527R1]], [[P1155R3]], [[P1825R0]]), <a href="http://eel.is/c++draft/class.copy.elision#1">[class.copy.elision]/1</a> has not. Proposed wording cleans up those issues.
 
 ### Parentheses are now allowed around the variable name ### {#req-parentheses}
 
@@ -384,21 +491,9 @@ There are multiple issues with current wording for copy elision. While <a href="
 <ins>[…] a (possibly parenthesized) *id-expression* […]</ins>
 </blockquote>
 
-In the following example, both `x` and `y` are considered [$return variable|return variables$]:
+See [[#ex-12]]. `x` is considered a [$return variable|return variable$], and `y` a [$potential return variable$].
 
-```cpp
-widget foo() {
-  widget x;
-  return (x);
-}
-
-widget bar() {
-  widget y;
-  return (((y)));
-}
-```
-
-Implementation divergence has been discovered. Clang and MSVC do perform copy elision there, but GCC does not. Consequently, this change may be delivered by a Defect Report.
+Implementation divergence has been discovered. Clang and MSVC currently does perform copy elision there, but GCC does not. Consequently, this change may be delivered by a Defect Report.
 
 ### Copy elision no longer applies to lambda captures ### {#req-lambda}
 
@@ -406,16 +501,19 @@ Implementation divergence has been discovered. Clang and MSVC do perform copy el
 <ins>[…] unless the variable is captured by a *lambda-expression* enclosing the `return` statement […]</ins>
 </blockquote>
 
-In the following case, name lookup for `w` in the inner `return` statement finds exactly the outer `w` variable. The `w` expression does satisfy the "name of a non-volatile object with automatic storage duration" condition. Therefore, copy elision can currently apply to the inner return statement. This seems unintentional; none of the major compilers apply copy elision in this case.
+In the following case, name lookup for `w` at line 4 finds exactly the outer `w` variable. The `w` expression does satisfy the "name of a non-volatile object with automatic storage duration" condition. Therefore, copy elision can currently apply to the inner return statement. This seems unintentional; none of the major compilers apply copy elision in this case.
 
-```cpp
+<xmp line-numbers="on">
 widget foo() {
   widget w;
   return [&w] {
     return w;
   }();
 }
-```
+</xmp>
+
+- ✗ Move or non-guaranteed copy elision (?!) at line 4. No copies or moves needed for `return` at line 3
+- ✓ Move at line 4 (copy elision cannot apply). No copies or moves needed for `return` at line 3
 
 This case will no longer be eligible for copy elision under the proposed wording. This change may be delivered by a Defect Report as well.
 
@@ -429,39 +527,127 @@ The previous restriction in this case looks like not-a-defect. Should this chang
 <del>other than […] or a variable introduced by the *exception-declaration* of a *handler* (<a href="http://eel.is/c++draft/except.handle">[except.handle]</a>
 </blockquote>
 
-This edge case will be removed, following the proposed wording. Observe the following example:
+<blockquote class="note warning-note">
+Note:
+Guaranteed copy elision will only affect exceptions caught by value ("by copy"). Exceptions caught by reference are not affected.
+</blockquote>
 
-```cpp
+<xmp line-numbers="on">
 struct widget {
   widget();
   widget(const widget&);
   widget(widget&&);
 };
 
-void bar() noexcept(false);
+void bar();
 bool toss_a_coin();
 
 widget foo() {
   try {
     bar();
-    return widget();
-  } catch (widget w) {
-    if (toss_a_coin()) {
-      return w;
-    }
-    return widget();
+  } catch (widget w) {            // (1.4)
+    use(w);
+    if (toss_a_coin()) return w;  // (1.1)
   }
+  return widget();
 }
-```
+</xmp>
 
-Without the proposed wording applied, the exception object will be copied to `w`, then it will be moved out in `return w;` (it satisfies the *implicitly movable entity* conditions, see <a href="http://eel.is/c++draft/class.copy.elision#3.1">[class.copy.elision]/(3.1)</a>). Unless the compiler can prove that the `toss_a_coin()` call never returns `true`, in which case <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> can apply, in which case `w` can be turned into an lvalue reference.
+**Not taking <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> into account**
 
-If we remove the move-constructor from `widget` (but leave the copy-constsuctor; most standard exception types are defined as that), then <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> can apply regardless of `toss_a_coin`. In case it is applied, `w` is treated as an lvalue reference, implicit movability of `w` does not matter, and `return w;` performs a copy, which cannot be elided. A sufficiently smart compiler can avoid all copies and moves on the path where `toss_a_coin()` returns `false`.
+- ✗ At line 14, copy. At line 15, move or non-guaranteed copy elision
+- ✓ At line 14, copy. At line 15, guaranteed copy elision
 
-With the proposed wording applied, the exception object will be copied to `w`, and copy elision is guaranteed for `return w;`. <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a>, if applied,
-prevents guaranteed copy elision, requiring the compiler to prove that this does not change the meaning of the program. From the optimization point-of-view, almost nothing changes, but it is guaranteed that no more than 1 copy is performed.
+**Applying <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> (non-guaranteed)**
+
+At line 14, `w` is an alias for the exception in flight. At line 15, copy (copyability is not required if the compiler can prove that `toss_a_coin` never returns `true`) or non-guaranteed copy elision (highly impractical). The compiler must prove that this application of <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> does not change the meaning of the program.
+
+This proposal can inhibit <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> in some edge cases for a particular compiler. In return, copy elision is guaranteed consistently for the `return` statement (<a href="http://eel.is/c++draft/class.copy.elision#1.1">[class.copy.elision]/(1.1)</a>).
 
 Overall, it seems that this is an edge case that can be removed painlessly. To guarantee the abscence of copies for the exception object, one should catch the exception by reference, instead of catching by copy and complaining about the copy. On the other hand, when a copy is intended, this proposal ensures that the caught exception is treated as well as any other variable.
+
+## What about trivially-copyable temporaries? ## {#trivial-temporaries}
+
+According to <a href="http://eel.is/c++draft/class.temporary">[class.temporary]</a>, the implementation is allowed to create a copy when the object of a trivially-copyable type is returned. That is also the case when the copied object participates in "guaranteed RVO" (C++17) or "guaranteed NRVO" (proposed). If the address of such an object is saved to a pointer variable, the pointer will become dangling on return from the function:
+
+<xmp>
+class A {
+public:
+  A* p;
+  A() : p(this) {}
+};
+
+A rvo() {
+  return A();
+}
+A x = rvo();   // x.p may be dangling
+
+A* q;
+A nrvo() {
+  A y = A();
+  q = &y;
+  return y;
+}
+A z = nrvo();  // z.p may be dangling
+               // q may be dangling
+</xmp>
+
+Changing <a href="http://eel.is/c++draft/class.temporary">[class.temporary]</a> and prohibiting such temporaries would cause ABI breakage, and is infeasible. ABI issues aside, it is not desirable to prohibit optimizations related to liberal treatment of trivially-copyable types.
+
+The amount of copying will still be reduced even for those cases. Currently it is implementation-defined whether a copy is elided (<a href="http://eel.is/c++draft/class.copy.elision#1">[class.copy.elision]/1</a>) and whether a temporary is created (<a href="http://eel.is/c++draft/class.temporary#3">[class.temporary]/3</a>). Depending on that, either 0, 1 or 2 copies may be performed (counting moves as copies). For example:
+
+<xmp>
+std::pair<int, int> foo() {
+  auto a = std::pair(1, 2);
+  return a;
+}
+
+auto b = foo();
+</xmp>
+
+Currently, 4 scenarios are possible:
+
+1. Copy elided, no temporary. `a` and `b` denote the same object. 0 copies
+2. Copy elided, temporary. `a` denotes the temporary, trivially copied or moved into `b`. 1 copy or move
+3. Copy not elided, no temporary. `a` is a normal local variable, implicitly moved into `b`. 1 move
+4. Copy not elided, temporary. `a` is implicitly moved into the temporary, which is then trivially copied or moved into `b`. 1 copy, 1 move or 2 moves
+
+With this proposal accepted, only scenarios 1 and 2 are possible.
+
+Regardless of trivially-copyable types, it is difficult to talk about copy elision for non-class types, because a function call with result of a non-class type might not have a result object (see <a href="http://eel.is/c++draft/expr.prop#basic.lval-5">[expr.prop]/5</a>).
+
+See also: [[#ex-13]], [[#ex-14]]
+
+## What about the invalidation of optimizations? ## {#invalidation}
+
+Observe an example:
+
+<xmp line-numbers="on">
+struct A {
+  int x;
+  A(int x) : x(x) {}
+  A(const A& o) : x(o.x) {}
+};
+extern A global;
+
+A foo() {
+  A local(2);
+  local.x += global.x;
+  return local;
+}
+</xmp>
+
+Currently, copy elision is not guaranteed here and cannot make invalid code valid. `global` at line 10 can be assumed to have nothing common with local, e.g. `global` cannot be defined as `A global = foo();`. Compilers use this knowledge to optimize `foo` to the equivalent of:
+
+<xmp>
+A foo() {
+  return A(2 + global.x);
+}
+</xmp>
+
+Under this proposal, `local` and `global` can be assumed to be distinct too, for a different reason. Inside `A global = foo();`, `global` and `local` are guaranteed to denote the same object, because `local` is a [$return variable$]. Before `foo` returns, the value of `local.x` is accessed through glvalue `global.x` that is not obtained from `local`, thus the value of `global.x` is unspecified.
+
+In summary, no optimizations will be invalidated. Code which would require invalidation of optimizations for its correctness is kept incorrect.
 
 ## Are the proposed changes source or ABI breaking? ## {#abi}
 
@@ -483,87 +669,6 @@ The proposal will make declarations of local variables with automatic storage du
 
 Compilers that already do NRVO will enable it (or at least the required part of it) in all compilation modes. The proposal might even have a positive impact on compilation time, because such implementations will not have to check whether copy-initialization on the return type can be performed.
 
-## What about trivially-copyable temporaries? ## {#trivial-temporaries}
-
-According to <a href="http://eel.is/c++draft/class.temporary">[class.temporary]</a>, the implementation is allowed to create a copy when the object of a trivially-copyable type is returned. That is also the case when the copied object participates in "guaranteed RVO" (C++17) or "guaranteed NRVO" (proposed). If the address of such an object is saved to a pointer variable, the pointer will become dangling on return from the function:
-
-```cpp
-class A {
-public:
-  A* p;
-  A() : p(this) {}
-}
-
-A rvo() {
-  return A();
-}
-A x = rvo();   // x.p may be dangling
-
-A* q{};
-A nrvo() {
-  A y = A();
-  q = &y;
-  return y;
-}
-A z = nrvo();  // z.p may be dangling
-               // q may be dangling
-```
-
-Changing <a href="http://eel.is/c++draft/class.temporary">[class.temporary]</a> and prohibiting such temporaries would cause ABI breakage, and is infeasible. ABI issues aside, it is not desirable to prohibit optimizations related to liberal treatment of trivially-copyable types.
-
-The amount of copying will still be reduced even for those cases. Currently it is implementation-defined whether a copy is elided (<a href="http://eel.is/c++draft/class.copy.elision#1">[class.copy.elision]/1</a>) and whether a temporary is created (<a href="http://eel.is/c++draft/class.temporary#3">[class.temporary]/3</a>). Depending on that, either 0, 1 or 2 copies may be performed (counting moves as copies). For example:
-
-```cpp
-std::pair<int, int> foo() {
-  auto a = std::pair(1, 2);
-  return a;
-}
-
-auto b = foo();
-```
-
-Currently, 4 scenarios are possible:
-
-1. Copy elided, no temporary. `a` and `b` denote the same object. 0 copies
-2. Copy elided, temporary. `a` denotes the temporary, trivially copied or moved into `b`. 1 copy or move
-3. Copy not elided, no temporary. `a` is a normal local variable, implicitly moved into `b`. 1 move
-4. Copy not elided, temporary. `a` is implicitly moved into the temporary, which is then trivially copied or moved into `b`. 1 copy, 1 move or 2 moves
-
-With this proposal accepted, only scenarios 1 and 2 are possible.
-
-Regardless of trivially-copyable types, it is difficult to talk about copy elision for non-class types, because a function call with result of a non-class type might not have a result object (see <a href="http://eel.is/c++draft/expr.prop#basic.lval-5">[expr.prop]/5</a>).
-
-## What about the invalidation of optimizations? ## {#invalidation}
-
-Observe an example:
-
-```
-struct A {
-  int x;
-  A(int x) : x(x) {}
-  A(const A& o) : x(o.x) {}
-};
-extern A global;
-
-A foo() {
-  A local(2);
-  local.x += global.x;
-  return local;
-}
-```
-
-Currently, copy elision is not guaranteed, it cannot make invalid code valid. `global` in `global.x` can be assumed to have nothing common with local, e.g. `global` cannot be defined as `A global = foo();`. Compilers use this knowledge to optimize `foo` to the equivalent of:
-
-```
-A foo() {
-  return A(2 + global.x);
-}
-```
-
-Under this proposal, `local` and `global` can be assumed to be distinct too, for a different reason. Inside `A global = foo();`, `global` and `local` are guaranteed to denote the same object. `local` is a [$return variable$]. Before `foo` returns, the value of `local.x` is accessed through glvalue `global.x` that is not obtained from `local`, thus the value of `global.x` is unspecified.
-
-In summary, no optimizations will be invalidated. Code which would require invalidation of optimizations for correctness is kept incorrect in a way that does not cause source or ABI breakage.
-
 # Alternative solutions # {#alternatives}
 
 ## Implement similar functionality using existing features ## {#existing-features}
@@ -572,16 +677,16 @@ We can implement similar functionality, with cooperation from the returned objec
 
 Suppose the `widget` class defines the following constructor, among others:
 
-```cpp
+<xmp>
 template <typename... Args, std::invocable<widget&> Func>
 widget(Args&&... args, Func&& func)
   : widget(std::forward<Args>(args)...)
   { std::invoke(std::forward<Func>(func)), *this); }
-```
+</xmp>
 
 We can then use it to observe the result object of a prvalue through a reference before returning it:
 
-```cpp
+<xmp>
 widget setup_widget(int x) {
   int y = process(x);
 
@@ -589,13 +694,13 @@ widget setup_widget(int x) {
     w.set_y(y);
   });
 }
-```
+</xmp>
 
 However, it requires cooperation from `widget` and breaks when some of its other constructors accept an invocable parameter. We cannot implement this functionality in general.
 
 ## Guarantee NRVO in more cases ## {#more-nrvo}
 
-```cpp
+<xmp>
 class builder {
 public:
   builder();
@@ -610,7 +715,7 @@ widget foo() {
   if (…) return b.rebuild();
   return w;
 }
-```
+</xmp>
 
 NRVO will **not** be guaranteed for `w`, according to this proposal. Meanwhile, one could say that it could be guaranteed: if the condition is true, then we could arrange it so that `w` (which is stored as the return object) is destroyed before `b.rebuild()` is called.
 
@@ -622,13 +727,13 @@ While the compiler can in some cases analyze the control flow and usage patterns
 
 As an alternative, [$return variable|return variables$] could require a specific attribute or a mark of some sort in order to be eligible for guaranteed copy elision:
 
-```cpp
+<xmp>
 widget setup_widget(int x) {
   auto w = widget(x) [[nrvo]];
   w.set_x(x);
   return w;
 }
-```
+</xmp>
 
 The benefit of requiring the mark is that the compiler would not have to determine for each local variable whether it could be a return variable. However, the cost of the compile-time checks is deemed to be low, while there would be some language complexity cost associated with the mark.
 
@@ -636,19 +741,19 @@ The benefit of requiring the mark is that the compiler would not have to determi
 
 Alias expressions would be a new type of expression. An <dfn dfn-type="abstract-op">alias expression</dfn> would accept a prvalue, execute a block, providing that block a "magical" reference to the result object of that prvalue, and the alias expression would itself be a prvalue with the original result object:
 
-```cpp
+<xmp>
 widget setup_widget(int x) {
   return using (w = widget()) {
     w.set_x(x);
   };
 }
-```
+</xmp>
 
 Such a construct would require more wording and special cases on the behavior of the "magical" reference `w` and the underlying object. It would be prohibited to `return` from inside the block of the alias expression. More importantly, alias expressions would introduce the precedent of an expression that contains statements, which has issues with a lot of the standard. And as with [[#explicit-mark|explicit marks]], it introduces more syntax, which the proposed solution avoids.
 
 Alias expressions could also be used to get rid of copies in places other than the return expressions, e.g. when passing a function argument by value:
 
-```cpp
+<xmp>
 void consume_widget(widget);
 
 void test(int x) {
@@ -656,11 +761,11 @@ void test(int x) {
     w.set_x(x);
   });
 }
-```
+</xmp>
 
 The proposed solution can be used with an immediately invoked lambda expression to perform the same task:
 
-```cpp
+<xmp>
 void consume_widget(widget);
 
 void test(int x) {
@@ -670,7 +775,7 @@ void test(int x) {
     return w;
   }());
 }
-```
+</xmp>
 
 # Future work # {#future-work}
 
@@ -703,7 +808,7 @@ The current proposal combines with [[P0927R2]] nicely. That proposal requires th
 
 The changes proposed by this proposal and [[P0927R2]], combined, would allow to implement alias expressions (see the corresponding section) without any extra help from the language:
 
-```cpp
+<xmp>
 template <typename T, invokable<T&> Func>
 T also([] -> T value, Func&& func) {
   T computed = value();
@@ -718,7 +823,7 @@ void test(int x) {
     w.set_x(x);
   }));
 }
-```
+</xmp>
 
 ## Allow temporaries to be created for types other than trivially-copyables ## {#more-temporaries}
 
@@ -730,7 +835,7 @@ This important change will be source-breaking and will lead to silent UB and bug
 
 For trivially copyable types, copy elision will still be non-guaranteed: the compiler may do a trivial copy if it "considers" that this will be beneficial for optimization or for other reasons. Meanwhile, sometimes it is still highly desirable to have this guarantee, e.g. when a pointer to the variable is saved elsewhere. To help in this situation, we may want a non-movable wrapper:
 
-```
+<xmp>
 template <typename T>
 struct pin {
   T value;
@@ -743,9 +848,74 @@ pin<int> test() {
   watch(&result);
   return result;
 }
-```
+</xmp>
 
 For `pin` to be an aggregate, <a href="http://eel.is/c++draft/dcl.init.aggr">[dcl.init.aggr]</a> needs to be relaxed to allow user-declared copy and move constructors.
+
+## Add an optional mark `[nrvo_verify]` ## {#optional-mark}
+
+Sometimes it's useful to assert that a variable is a [$return variable|return variable$] (and of a non-trivially-copiable type, otherwise it is useless). It would allow to catch subtle bugs caused by evolution of code.
+
+Before:
+
+<xmp>
+widget frobnicate() {
+  widget result [[nrvo_verify]];
+  watch(&result);
+  // …
+      if (good()) {
+        return result;
+      }
+  // …
+  return result;
+}
+</xmp>
+
+After:
+
+<xmp>
+widget frobnicate() {
+  widget result [[nrvo_verify]];  // ERROR, good
+  watch(&result);
+  // …
+      if (good()) {
+        return result;
+      } else if (bad()) {
+        return widget();
+      }
+  // …
+  return result;
+}
+</xmp>
+
+<blockquote class="note warning-note">
+Note:
+This idea is different from [[#explicit-mark]]. Here, the mark is optional.
+</blockquote>
+
+<blockquote class="note warning-note">
+Note:
+Note that the same result can be achieved using [[#pin]] without a specialized language feature.
+</blockquote>
+
+## Allow copy elision for complex expressions ## {#complex-expressions}
+
+Can copy elision be allowed in these cases?
+
+<xmp>
+widget foo() {
+  widget x;
+  return x += bar();
+  return toss_a_coin() ? foo() : x;
+  return foo(), bar(), x;
+}
+</xmp>
+
+- For assignment operators, assuming that they return `*this` is infeasible, as voted in Kona 2019 ([[P1155R2]])
+- A ternary operator could be treated as an `if` statement, at which point `x` is not a [$return variable$], but we could allow it to be a [$potential return variable$], if `x` is not implicitly converted
+- For a comma operator, it can be overloaded. We could allow it in non-overloaded case
+
+All in all, it seems that the benefits are not worth the additional complexity.
 
 # Acknowledgements # {#acknowledgements}
 
