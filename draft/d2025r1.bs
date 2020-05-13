@@ -155,8 +155,7 @@ widget setup_widget(int x) {
 }
 </xmp>
 
-- ✗ No copies or moves needed at line 2
-- ✓ No copies or moves needed at line 2
+- ✗✓ No copies or moves needed at line 2
 
 ### Example 2 ### {#ex-2}
 
@@ -205,8 +204,7 @@ widget setup_widget() {
 }
 </xmp>
 
-- ✗ Move or non-guaranteed copy elision at line 4. No copies or moves needed at line 6
-- ✓ Move or non-guaranteed copy elision at line 4. No copies or moves needed at line 6
+- ✗✓ Move or non-guaranteed copy elision at line 4. No copies or moves needed at line 6
 
 ### Example 5 ### {#ex-5}
 
@@ -291,8 +289,8 @@ constexpr std::mutex test() {
 constinit std::mutex m = test();
 </xmp>
 
-- ✗ Move at line 6 (copy elision cannot apply)
-- ✓ Guaranteed copy elision at line 6
+- ✗ Move at line 3 (copy elision cannot apply)
+- ✓ Guaranteed copy elision at line 3
 
 ### Example 10 ### {#ex-10}
 
@@ -318,8 +316,6 @@ widget test() {
 
 ### Example 11 ### {#ex-11}
 
-Copy elision will be allowed for exceptions caught by value. See also: [[#req-value-exeptions]]
-
 <xmp line-numbers="on">
 void foo();
 
@@ -334,12 +330,12 @@ widget test() {
 }
 </xmp>
 
-- ✗ Copy or non-guaranteed copy elision at line 8. Move or non-guaranteed copy elision at line 9
-- ✓ Copy or non-guaranteed copy elision at line 8. Guaranteed copy elision at line 9
+- ✗ Copy or non-guaranteed copy elision at line 7. Move or non-guaranteed copy elision at line 9
+- ✓ Copy or non-guaranteed copy elision at line 7. Guaranteed copy elision at line 9
+
+See also: [[#req-value-exeptions]]
 
 ### Example 12 ### {#ex-12}
-
-Copy elision will be allowed for parenthesized names. See also: [[#req-parentheses]]
 
 <xmp line-numbers="on">
 widget test() {
@@ -353,9 +349,11 @@ widget test() {
 - ✗ Move at lines 3 and 5 (copy elision cannot apply)
 - ✓ Move or non-guaranteed copy elision at line 3. Guaranteed copy elision at line 5
 
+See also: [[#req-parentheses]]
+
 ### Example 13 ### {#ex-13}
 
-For trivially-copiable types, a copy still may be introduced. See also: [[#trivial-temporaries]]
+For trivially-copiable types, a copy still may be introduced.
 
 <xmp line-numbers="on">
 struct gadget {
@@ -373,9 +371,11 @@ gadget y = test();
 - ✗ Move or non-guaranteed copy elision at line 8. An additional copy may be introduced. It is implementation-defined whether `x` and `y` name the same object
 - ✓ Guaranteed copy elision at line 8. An additional copy may be introduced. It is implementation-defined whether `x` and `y` name the same object
 
+See also: [[#trivial-temporaries]]
+
 ### Example 14 ### {#ex-14}
 
-For non-class types, copy elision does not apply. See also: [[#trivial-temporaries]]
+For non-class types, copy elision does not apply.
 
 <xmp line-numbers="on">
 int test() {
@@ -385,8 +385,9 @@ int test() {
 int y = test();
 </xmp>
 
-- ✗ Copy at line 3. An additional copy may be introduced. `x` and `y` name different objects
-- ✓ Copy at line 3. An additional copy may be introduced. `x` and `y` name different objects
+- ✗✓ Copy at line 3. An additional copy may be introduced. `x` and `y` name different objects
+
+See also: [[#trivial-temporaries]]
 
 # Proposed wording # {#wording}
 
@@ -519,10 +520,6 @@ This case will no longer be eligible for copy elision under the proposed wording
 
 ### Copy elision now applies to exceptions caught by value ### {#req-value-exeptions}
 
-<blockquote class="issue">
-The previous restriction in this case looks like not-a-defect. Should this change belong to a separate proposal?
-</blockquote>
-
 <blockquote>
 <del>other than […] or a variable introduced by the *exception-declaration* of a *handler* (<a href="http://eel.is/c++draft/except.handle">[except.handle]</a>
 </blockquote>
@@ -555,16 +552,20 @@ widget foo() {
 
 **Not taking <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> into account**
 
-- ✗ At line 14, copy. At line 15, move or non-guaranteed copy elision
-- ✓ At line 14, copy. At line 15, guaranteed copy elision
+- ✗ At line 13, copy. At line 15, move or non-guaranteed copy elision
+- ✓ At line 13, copy. At line 15, guaranteed copy elision
 
 **Applying <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> (non-guaranteed)**
 
-At line 14, `w` is an alias for the exception in flight. At line 15, copy (copyability is not required if the compiler can prove that `toss_a_coin` never returns `true`) or non-guaranteed copy elision (highly impractical). The compiler must prove that this application of <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> does not change the meaning of the program.
+- ✗✓ At line 13, `w` is an alias for the exception in flight. At line 15, copy (copyability is not required if the compiler can prove that `toss_a_coin` never returns `true`) or copy elision (<a href="http://eel.is/c++draft/class.copy.elision#1.1">[class.copy.elision]/(1.1)</a>, highly impractical in this case). The compiler must prove that this application of <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> does not change the meaning of the program.
 
 This proposal can inhibit <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> in some edge cases for a particular compiler. In return, copy elision is guaranteed consistently for the `return` statement (<a href="http://eel.is/c++draft/class.copy.elision#1.1">[class.copy.elision]/(1.1)</a>).
 
 Overall, it seems that this is an edge case that can be removed painlessly. To guarantee the abscence of copies for the exception object, one should catch the exception by reference, instead of catching by copy and complaining about the copy. On the other hand, when a copy is intended, this proposal ensures that the caught exception is treated as well as any other variable.
+
+<blockquote class="issue">
+The previous restriction in this case looks like not-a-defect. Should this change belong to a separate proposal?
+</blockquote>
 
 ## What about trivially-copyable temporaries? ## {#trivial-temporaries}
 
