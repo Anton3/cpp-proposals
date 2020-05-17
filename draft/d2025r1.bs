@@ -193,7 +193,7 @@ widget setup_widget(int x) {
 
 ### Example 3 ### {#ex-3}
 
-Implementation-wise, `w1`, `w2` and `w3` will occupy the return slot at different times. Wording-wise, if we reach line 9, then w1 and w2 are not considered to have ever denoted the result object of the function call; they are considered normal local variables, so the result object of the function is only constructed and destroyed once.
+Implementation-wise, `w1`, `w2` and `w3` will occupy the return slot at different times. Wording-wise, if we reach line 10, then `w1` and `w2` are not considered to have ever denoted the result object of the function call; they are considered normal local variables, so the result object of the function is only constructed and destroyed once.
 
 <xmp line-numbers="on">
 widget test() {
@@ -405,7 +405,8 @@ gadget test() {
 gadget y = test();
 </xmp>
 
-- ✗✓ Trivial copy or non-guaranteed copy elision at line 8. An additional copy may be introduced. It is implementation-defined whether `x` and `y` name the same object and whether `y.p` dangles
+- ✗ Trivial copy or non-guaranteed copy elision at line 8. An additional copy may be introduced. It is implementation-defined whether `x` and `y` name the same object and whether `y.p` dangles
+- ✓ Guaranteed copy elision at line 8. An additional copy may be introduced. It is implementation-defined whether `x` and `y` name the same object and whether `y.p` dangles
 
 See also: [[#trivial-temporaries]]
 
@@ -423,11 +424,11 @@ large test() {
 
 large a = test();
 large b = test() + test();
-singed char c = test();
+signed char c = test();
 </xmp>
 
-- ✗ Trivial copy at line 5 (copy elision cannot apply). An additional copy may be introduced
-- ✓ Guaranteed copy elision at line 5. An additional copy may be introduced. The copy is required for calls at lines 9 and 10
+- ✗ Trivial copy at line 5 (copy elision cannot apply). An additional copy may be introduced. It is implementation-defined whether `x` and `a` name the same object
+- ✓ Guaranteed copy elision at line 5. An additional copy may be introduced. It is implementation-defined whether `x` and `a` name the same object
 
 See also: [[#non-class]]
 
@@ -435,7 +436,7 @@ See also: [[#non-class]]
 
 <xmp line-numbers="on">
 template <bool B>
-int test() {
+widget test() {
   widget w;
   if constexpr (B) {
     if (false) return widget();
