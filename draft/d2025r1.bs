@@ -445,7 +445,7 @@ int test() {
 </xmp>
 
 - ✗ Move or non-guaranteed copy elision at line 7
-- ✓ In the istantiation where `B == false`, guaranteed copy elision at line 7. In the istantiation where `B == true`, move or non-guaranteed copy elision at line 7
+- ✓ In the instantiation where `B == false`, guaranteed copy elision at line 7. In the instantiation where `B == true`, move or non-guaranteed copy elision at line 7
 
 # Proposed wording # {#wording}
 
