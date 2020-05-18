@@ -463,6 +463,7 @@ widget bar() {
   if (…) {
     const widget c;
     // c.mutate();  // ERROR
+    // const_cast<widget&>(c).mutate();  // UB
     return c;
   }
   volatile widget d;
@@ -472,12 +473,13 @@ auto e = foo();
 
 void baz() {
   // b.mutate();  // ERROR
-  e.mutate();     // OK
+  // const_cast<widget&>(b).mutate();  // UB
+  e.mutate();  // OK
 }
 </xmp>
 
-- ✗ Move or non-guaranteed copy elision at lines 4 and 12. Move at line 15 (copy elision cannot apply)
-- ✓ Guaranteed copy elision at lines 4 and 12. Move at line 15 (copy elision cannot apply)
+- ✗ Move or non-guaranteed copy elision at lines 4 and 13. Move at line 16 (copy elision cannot apply)
+- ✓ Guaranteed copy elision at lines 4 and 13. Move at line 16 (copy elision cannot apply)
 
 # Proposed wording # {#wording}
 
