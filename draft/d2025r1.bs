@@ -154,11 +154,11 @@ In order to deliver on the promise of guaranteed copy elision there, we would ha
 
 # Proposed solution # {#proposal}
 
-If copy elision for a returned variable is allowed, and all <a href="http://eel.is/c++draft/stmt.if#def:discarded_statement">non-discarded</a> `return` statements in its <a href="http://eel.is/c++draft/basic.scope#def:potential_scope">potential scope</a> [$to return a variable|return$] the variable, then copy elision is guaranteed. The type of the variable is allowed to be non-copyable, non-movable.
+If a returned variable is of the same non-trivially-copyable class type as the return type of the function (ignoring cv-qualification), and all <a href="http://eel.is/c++draft/stmt.if#def:discarded_statement">non-discarded</a> `return` statements in its <a href="http://eel.is/c++draft/basic.scope#def:potential_scope">potential scope</a> [$to return a variable|return$] the variable, then copy elision is guaranteed. The type of the variable is allowed to be non-copyable, non-movable.
 
 (For the purposes of brevity, the explanation above is not rigorous; see [[#wording]] for a rigorous explanation.)
 
-To state the gist of the requirement even easier (and even less rigorous):
+To state the gist of the main requirement even easier (and even less rigorous):
 
 > Copy elision is guaranteed for `return x;` if every `return` "seen" by `x` is `return x;`
 
@@ -448,6 +448,36 @@ widget test() {
 
 - ✗ Move or non-guaranteed copy elision at line 7
 - ✓ In the instantiation where `B == false`, guaranteed copy elision at line 7. In the instantiation where `B == true`, move or non-guaranteed copy elision at line 7
+
+### Example 16 ### {#ex-16}
+
+<xmp line-numbers="on">
+const volatile widget foo() {
+  widget a;
+  a.mutate();  // OK
+  return a;
+}
+auto b = foo();
+
+widget bar() {
+  if (…) {
+    const widget c;
+    // c.mutate();  // ERROR
+    return c;
+  }
+  volatile widget d;
+  return d;  //!
+}
+auto e = foo();
+
+void baz() {
+  // b.mutate();  // ERROR
+  e.mutate();     // OK
+}
+</xmp>
+
+- ✗ Move or non-guaranteed copy elision at lines 4 and 12. Move at line 15 (copy elision cannot apply)
+- ✓ Guaranteed copy elision at lines 4 and 12. Move at line 15 (copy elision cannot apply)
 
 # Proposed wording # {#wording}
 

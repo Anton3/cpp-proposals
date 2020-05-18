@@ -1648,6 +1648,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li><a href="#ex-13"><span class="secno">4.1.13</span> <span class="content">Example 13</span></a>
         <li><a href="#ex-14"><span class="secno">4.1.14</span> <span class="content">Example 14</span></a>
         <li><a href="#ex-15"><span class="secno">4.1.15</span> <span class="content">Example 15</span></a>
+        <li><a href="#ex-16"><span class="secno">4.1.16</span> <span class="content">Example 16</span></a>
        </ol>
      </ol>
     <li>
@@ -1811,9 +1812,9 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
 </pre>
    <p>In order to deliver on the promise of guaranteed copy elision there, we would have to use the <code class="highlight"><c- n>scope_success</c-></code> trick described above.</p>
    <h2 class="heading settled" data-level="4" id="proposal"><span class="secno">4. </span><span class="content">Proposed solution</span><a class="self-link" href="#proposal"></a></h2>
-   <p>If copy elision for a returned variable is allowed, and all <a href="http://eel.is/c++draft/stmt.if#def:discarded_statement">non-discarded</a> <code class="highlight"><c- k>return</c-></code> statements in its <a href="http://eel.is/c++draft/basic.scope#def:potential_scope">potential scope</a> <a data-link-type="abstract-op" href="#abstract-opdef-to-return-a-variable" id="ref-for-abstract-opdef-to-return-a-variable①">return</a> the variable, then copy elision is guaranteed. The type of the variable is allowed to be non-copyable, non-movable.</p>
+   <p>If a returned variable is of the same non-trivially-copyable class type as the return type of the function (ignoring cv-qualification), and all <a href="http://eel.is/c++draft/stmt.if#def:discarded_statement">non-discarded</a> <code class="highlight"><c- k>return</c-></code> statements in its <a href="http://eel.is/c++draft/basic.scope#def:potential_scope">potential scope</a> <a data-link-type="abstract-op" href="#abstract-opdef-to-return-a-variable" id="ref-for-abstract-opdef-to-return-a-variable①">return</a> the variable, then copy elision is guaranteed. The type of the variable is allowed to be non-copyable, non-movable.</p>
    <p>(For the purposes of brevity, the explanation above is not rigorous; see <a href="#wording">§ 5 Proposed wording</a> for a rigorous explanation.)</p>
-   <p>To state the gist of the requirement even easier (and even less rigorous):</p>
+   <p>To state the gist of the main requirement even easier (and even less rigorous):</p>
    <blockquote>
     <p>Copy elision is guaranteed for <code class="highlight"><c- k>return</c-> <c- n>x</c-><c- p>;</c-></code> if every <code class="highlight"><c- k>return</c-></code> "seen" by <code class="highlight"><c- n>x</c-></code> is <code class="highlight"><c- k>return</c-> <c- n>x</c-><c- p>;</c-></code></p>
    </blockquote>
@@ -1954,6 +1955,14 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
      <p>✗ Move or non-guaranteed copy elision at line 7</p>
     <li data-md>
      <p>✓ In the instantiation where <code class="highlight"><c- n>B</c-> <c- o>==</c-> false</code>, guaranteed copy elision at line 7. In the instantiation where <code class="highlight"><c- n>B</c-> <c- o>==</c-> true</code>, move or non-guaranteed copy elision at line 7</p>
+   </ul>
+   <h4 class="heading settled" data-level="4.1.16" id="ex-16"><span class="secno">4.1.16. </span><span class="content">Example 16</span><a class="self-link" href="#ex-16"></a></h4>
+<pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- k>const</c-> <c- k>volatile</c-> <c- n>widget</c-> <c- nf>foo</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- n>widget</c-> <c- n>a</c-><c- p>;</c-></span><span class="line-no" data-line="3"></span><span class="line">  <c- n>a</c-><c- p>.</c-><c- n>mutate</c-><c- p>();</c->  <c- c1>// OK</c-></span><span class="line-no" data-line="4"></span><span class="line">  <c- k>return</c-> <c- n>a</c-><c- p>;</c-></span><span class="line-no" data-line="5"></span><span class="line"><c- p>}</c-></span><span class="line-no" data-line="6"></span><span class="line"><c- k>auto</c-> <c- n>b</c-> <c- o>=</c-> <c- n>foo</c-><c- p>();</c-></span><span class="line-no" data-line="7"></span><span class="line"></span><span class="line-no" data-line="8"></span><span class="line"><c- n>widget</c-> <c- nf>bar</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="9"></span><span class="line">  <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- p>{</c-></span><span class="line-no" data-line="10"></span><span class="line">    <c- k>const</c-> <c- n>widget</c-> <c- n>c</c-><c- p>;</c-></span><span class="line-no" data-line="11"></span><span class="line">    <c- c1>// c.mutate();  // ERROR</c-></span><span class="line-no" data-line="12"></span><span class="line">    <c- k>return</c-> <c- n>c</c-><c- p>;</c-></span><span class="line-no" data-line="13"></span><span class="line">  <c- p>}</c-></span><span class="line-no" data-line="14"></span><span class="line">  <c- k>volatile</c-> <c- n>widget</c-> <c- n>d</c-><c- p>;</c-></span><span class="line-no" data-line="15"></span><span class="line">  <c- k>return</c-> <c- n>d</c-><c- p>;</c->  <c- c1>//!</c-></span><span class="line-no" data-line="16"></span><span class="line"><c- p>}</c-></span><span class="line-no" data-line="17"></span><span class="line"><c- k>auto</c-> <c- n>e</c-> <c- o>=</c-> <c- n>foo</c-><c- p>();</c-></span><span class="line-no" data-line="18"></span><span class="line"></span><span class="line-no" data-line="19"></span><span class="line"><c- b>void</c-> <c- nf>baz</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="20"></span><span class="line">  <c- c1>// b.mutate();  // ERROR</c-></span><span class="line-no" data-line="21"></span><span class="line">  <c- n>e</c-><c- p>.</c-><c- n>mutate</c-><c- p>();</c->     <c- c1>// OK</c-></span><span class="line-no" data-line="22"></span><span class="line"><c- p>}</c-></span></pre>
+   <ul>
+    <li data-md>
+     <p>✗ Move or non-guaranteed copy elision at lines 4 and 12. Move at line 15 (copy elision cannot apply)</p>
+    <li data-md>
+     <p>✓ Guaranteed copy elision at lines 4 and 12. Move at line 15 (copy elision cannot apply)</p>
    </ul>
    <h2 class="heading settled" data-level="5" id="wording"><span class="secno">5. </span><span class="content">Proposed wording</span><a class="self-link" href="#wording"></a></h2>
    <p>The wording in this section is relative to WG21 draft <a data-link-type="biblio" href="#biblio-n4861">[N4861]</a>.</p>
