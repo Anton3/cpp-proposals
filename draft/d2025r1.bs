@@ -55,6 +55,7 @@ R1 (post-Prague):
 - Added more [[#examples]]
 - Added [[#pin]] subsection
 - Added [[#more-temporaries]] subsection
+- Expanded the [[#explicit-mark]] subsection
 - Added [[#optional-mark]] subsection
 - Added [[#complex-expressions]] subsection
 
@@ -477,7 +478,7 @@ The definition avoids mentioning the object a [$return variable$] names prematur
 
 <blockquote class="note warning-note">
 Note:
-See also [[#req-change]], [[#trivial-temporaries]].
+See also [[#req-change]], [[#trivial-temporaries]]
 </blockquote>
 
 <blockquote class="issue">
@@ -521,7 +522,7 @@ The object of a [$return variable$] is analogous to an object under construction
 
 <blockquote class="note warning-note">
 Note:
-See also [[#invalidation]].
+See also [[#invalidation]]
 </blockquote>
 
 <blockquote class="issue">
@@ -741,7 +742,7 @@ Currently, 4 scenarios are possible:
 
 With this proposal accepted, only scenarios 1 and 2 are possible.
 
-See also: [[#ex-13]].
+See also: [[#ex-13]]
 
 ## What about copy elision for non-class types? ## {#non-class}
 
@@ -773,7 +774,7 @@ While `x` and `y` represent the same object "in the metal", they name different 
 
 The proposed wording suggests being more honest in this regard by saying that a function with object return type always has a result object, and then by allowing non-class object types to participate in copy elision on equal rights with trivially-copyable objects.
 
-See also: [[#ex-14]].
+See also: [[#ex-14]]
 
 ## What about the invalidation of optimizations? ## {#invalidation}
 
@@ -884,13 +885,24 @@ As an alternative, [$return variable|return variables$] could require a specific
 
 <xmp>
 widget setup_widget(int x) {
-  auto w = widget(x) [[nrvo]];
+  widget w [[nrvo]];
   w.set_x(x);
   return w;
 }
 </xmp>
 
-The benefit of requiring the mark is that the compiler would not have to determine for each local variable whether it could be a return variable. However, the cost of the compile-time checks is deemed to be low, while there would be some language complexity cost associated with the mark.
+The mark would only be applicable to non-trivially-copyable return types.
+
+The benefit of requiring a mark is that the compiler would not have to determine for each local variable whether it could be a return variable. However, the cost of the compile-time checks is deemed to be low, while there would be some language complexity cost associated with the mark.
+
+Another benefit would be that the reader of the code would be able to see at a glance that `w` is a [$return variable$] without reading further.
+
+The arguments against requiring an explicit mark are:
+
+- The mark takes space and makes code less elegant
+- In the majority of cases, control flow is not exceedingly complex
+- `pin<T>` ([[#pin]]) could be used to protect against copying when it is important
+- Without the mark, existing code can benefit from guaranteed copy elision
 
 ## Alias expressions ## {#alias-expressions}
 
@@ -988,24 +1000,48 @@ This important change will be source-breaking and will lead to silent UB and bug
 
 ## `std::pin<T>` class ## {#pin}
 
-For trivially copyable types, copy elision will still be non-guaranteed: the compiler may do a trivial copy if it "considers" that this will be beneficial for optimization or for other reasons. Meanwhile, sometimes it is still highly desirable to have this guarantee, e.g. when a pointer to the variable is saved elsewhere. To help in this situation, we may want a non-movable wrapper:
+For trivially copyable types, copy elision will still be non-guaranteed: the implementation may do a trivial copy to pass the result in registers. Meanwhile, sometimes it is highly desirable to have the guarantee for the abscence of copies, e.g. when a pointer to the variable is stored elsewhere. To help in this situation, we may want a non-copyable, non-movable wrapper `pin<T>` which is an aggregate with a single `value` data member. It can be used as follows:
 
 <xmp>
-template <typename T>
-struct pin {
-  T value;
-
-  pin& operator=(pin&& other) = delete;
+struct A {
+  A* p;
+  constexpr A(int) : p(this) {}
 };
 
-pin<int> test() {
-  pin<int> result(42);
-  watch(&result);
-  return result;
+constexpr pin<A> foo() {
+  pin<A> x{1};
+  return x;
+}
+
+void test_foo() {
+  constexpr auto y = foo();
+  static_assert(y.value.p == &y.value);  // OK
+}
+
+pin<std::string> bar() {
+  pin<std::string> std::string y;
+  …
+  if (…) return {};
+  …
+  return y;  // ERROR: y is not a return variable
 }
 </xmp>
 
-For `pin` to be an aggregate, <a href="http://eel.is/c++draft/dcl.init.aggr">[dcl.init.aggr]</a> needs to be relaxed to allow user-declared copy and move constructors.
+The `pin<T>` class can be implemented as follows:
+
+<xmp>
+struct __pin_non_movable {
+  __pin_non_movable& operator=(__pin_non_movable&&) = delete;
+};
+
+template <typename T>
+struct __pin_holder {
+  T value;
+};
+
+template <typename T>
+struct pin : __pin_holder<T>, __pin_non_movable { };
+</xmp>
 
 ## Add an optional mark `[[nrvo_verify]]` ## {#optional-mark}
 
