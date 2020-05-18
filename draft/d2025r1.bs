@@ -88,7 +88,7 @@ In C++20, the only copy allowed in the example is the one at line 3. Copy elisio
 
 # Motivation # {#motivation}
 
-What follows are the examples where the abscence of guaranteed copy elision for [$to return a variable|returned$] variables enforces rewriting the code in a way that is less readable or efficient.
+What follows are the examples where the absence of guaranteed copy elision for [$to return a variable|returned$] variables enforces rewriting the code in a way that is less readable or efficient.
 
 ## Construct-cook-return ## {#construct-cook-return}
 
@@ -127,7 +127,7 @@ widget widget_owner::pilfer() {
 }
 </xmp>
 
-Unfortunately, such a clean-up work leads to the abscence of guaranteed copy elision. It can, however, be worked around using a facility like `scope_success` from [[P0052R9]]:
+Unfortunately, such a clean-up work leads to the absence of guaranteed copy elision. It can, however, be worked around using a facility like `scope_success` from [[P0052R9]]:
 
 <xmp>
 widget widget_owner::pilfer() {
@@ -690,7 +690,7 @@ widget foo() {
 
 This proposal can inhibit <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a> in some edge cases for a particular compiler. In return, copy elision is guaranteed consistently for the `return` statement (<a href="http://eel.is/c++draft/class.copy.elision#1.1">[class.copy.elision]/(1.1)</a>).
 
-Overall, it seems that this is an edge case that can be removed painlessly. To guarantee the abscence of copies for the exception object, one should catch the exception by reference, instead of catching by copy and complaining about the copy. On the other hand, when a copy is intended, this proposal ensures that the caught exception is treated as well as any other variable.
+Overall, it seems that this is an edge case that can be removed painlessly. To guarantee the absence of copies for the exception object, one should catch the exception by reference, instead of catching by copy and complaining about the copy. On the other hand, when a copy is intended, this proposal ensures that the caught exception is treated as well as any other variable.
 
 <blockquote class="issue">
 The previous restriction in this case looks like not-a-defect. Should this change belong to a separate proposal?
@@ -1000,7 +1000,7 @@ This important change will be source-breaking and will lead to silent UB and bug
 
 ## `std::pin<T>` class ## {#pin}
 
-For trivially copyable types, copy elision will still be non-guaranteed: the implementation may do a trivial copy to pass the result in registers. Meanwhile, sometimes it is highly desirable to have the guarantee for the abscence of copies, e.g. when a pointer to the variable is stored elsewhere. To help in this situation, we may want a non-copyable, non-movable wrapper `pin<T>` which is an aggregate with a single `value` data member. It can be used as follows:
+For trivially copyable types, copy elision will still be non-guaranteed: the implementation may do a trivial copy to pass the result in registers. Meanwhile, sometimes it is highly desirable to have the guarantee for the absence of copies, e.g. when a pointer to the variable is stored elsewhere. To help in this situation, we may want a non-copyable, non-movable wrapper `pin<T>` which is an aggregate with a single `value` data member. It can be used as follows:
 
 <xmp>
 struct A {
