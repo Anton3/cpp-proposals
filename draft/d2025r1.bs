@@ -901,7 +901,8 @@ The arguments against requiring an explicit mark are:
 
 - The mark takes space and makes code less elegant
 - In the majority of cases, control flow is not exceedingly complex
-- `pin<T>` ([[#pin]]) could be used to protect against copying when it is important
+- If the objects of some class should not be moved, it is usually a good idea to make the class non-movable
+- `pin<T>` ([[#pin]]) could be used to protect against copying when it is important, but the type is movable
 - Without the mark, existing code can benefit from guaranteed copy elision
 
 ## Alias expressions ## {#alias-expressions}

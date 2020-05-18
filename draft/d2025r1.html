@@ -2256,7 +2256,9 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
     <li data-md>
      <p>In the majority of cases, control flow is not exceedingly complex</p>
     <li data-md>
-     <p><code class="highlight"><c- n>pin</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-></code> (<a href="#pin">§ 8.5 std::pin&lt;T> class</a>) could be used to protect against copying when it is important</p>
+     <p>If the objects of some class should not be moved, it is usually a good idea to make the class non-movable</p>
+    <li data-md>
+     <p><code class="highlight"><c- n>pin</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-></code> (<a href="#pin">§ 8.5 std::pin&lt;T> class</a>) could be used to protect against copying when it is important, but the type is movable</p>
     <li data-md>
      <p>Without the mark, existing code can benefit from guaranteed copy elision</p>
    </ul>
