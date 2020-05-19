@@ -2,7 +2,7 @@
  <head>
   <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
   <meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport">
-  <title>D2025R1: Guaranteed copy elision for named return objects</title>
+  <title>D2025R1: Guaranteed copy elision for return variables</title>
 <style data-fill-with="stylesheet">/******************************************************************************
  *                   Style sheet for the W3C specifications                   *
  *
@@ -1294,7 +1294,7 @@ Possible extra rowspan handling
     blockquote c-[vi] { color: inherit; } /* Name.Variable.Instance */
     blockquote c-[il] { color: inherit; } /* Literal.Number.Integer.Long */
   </style>
-  <meta content="Bikeshed version e3f9ab1a, updated Fri Apr 24 17:43:54 2020 -0700" name="generator">
+  <meta content="Bikeshed version 78f8c09c, updated Tue May 19 10:51:23 2020 -0700" name="generator">
   <link href="https://isocpp.org/favicon.ico" rel="icon">
 <style>
 ins {
@@ -1589,7 +1589,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
  <body class="h-entry">
   <div class="head">
    <p data-fill-with="logo"></p>
-   <h1 class="p-name no-ref" id="title">D2025R1<br>Guaranteed copy elision for named return objects</h1>
+   <h1 class="p-name no-ref" id="title">D2025R1<br>Guaranteed copy elision for return variables</h1>
    <h2 class="no-num no-toc no-ref heading settled" id="subtitle"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2020-05-13">2020-05-13</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
@@ -1613,7 +1613,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   </div>
   <div class="p-summary" data-fill-with="abstract">
    <h2 class="no-num no-toc no-ref heading settled" id="abstract"><span class="content">Abstract</span></h2>
-   <p>This proposal aims to provide guaranteed copy elision for common cases of local variables being returned from a function, a.k.a. guaranteed NRVO.</p>
+   <p>This proposal aims to provide guaranteed copy elision for common cases of local variables being returned from a function, a.k.a. "guaranteed NRVO".</p>
   </div>
   <nav data-fill-with="table-of-contents" id="toc">
    <h2 class="no-num no-toc no-ref" id="contents">Table of Contents</h2>
@@ -1649,6 +1649,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li><a href="#ex-14"><span class="secno">4.1.14</span> <span class="content">Example 14</span></a>
         <li><a href="#ex-15"><span class="secno">4.1.15</span> <span class="content">Example 15</span></a>
         <li><a href="#ex-16"><span class="secno">4.1.16</span> <span class="content">Example 16</span></a>
+        <li><a href="#ex-17"><span class="secno">4.1.17</span> <span class="content">Example 17</span></a>
        </ol>
      </ol>
     <li>
@@ -1667,12 +1668,16 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
        <a href="#req-change"><span class="secno">6.2</span> <span class="content">Have requirements for copy elision changed?</span></a>
        <ol class="toc">
         <li><a href="#req-parentheses"><span class="secno">6.2.1</span> <span class="content">Parentheses are now allowed around the variable name</span></a>
-        <li><a href="#req-lambda"><span class="secno">6.2.2</span> <span class="content">Copy elision no longer applies to lambda captures</span></a>
+        <li><a href="#req-lambda"><span class="secno">6.2.2</span> <span class="content">Copy elision is no longer allowed for lambda captures</span></a>
         <li><a href="#req-value-exeptions"><span class="secno">6.2.3</span> <span class="content">Exception-declarations can introduce return variables</span></a>
        </ol>
       <li><a href="#trivial-temporaries"><span class="secno">6.3</span> <span class="content">What about trivially copyable temporaries?</span></a>
       <li><a href="#non-class"><span class="secno">6.4</span> <span class="content">What about copy elision for non-class types?</span></a>
-      <li><a href="#invalidation"><span class="secno">6.5</span> <span class="content">What about the invalidation of optimizations?</span></a>
+      <li>
+       <a href="#invalidation"><span class="secno">6.5</span> <span class="content">What about the invalidation of optimizations?</span></a>
+       <ol class="toc">
+        <li><a href="#escape-analysis"><span class="secno">6.5.1</span> <span class="content">Complication of escape analysis</span></a>
+       </ol>
       <li><a href="#abi"><span class="secno">6.6</span> <span class="content">Are the proposed changes source or ABI breaking?</span></a>
       <li><a href="#costs"><span class="secno">6.7</span> <span class="content">What are the costs associated with the proposed changes?</span></a>
      </ol>
@@ -1680,7 +1685,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
      <a href="#alternatives"><span class="secno">7</span> <span class="content">Alternative solutions</span></a>
      <ol class="toc">
       <li><a href="#existing-features"><span class="secno">7.1</span> <span class="content">Implement similar functionality using existing features</span></a>
-      <li><a href="#more-nrvo"><span class="secno">7.2</span> <span class="content">Guarantee "NRVO" in more cases</span></a>
+      <li><a href="#more-nrvo"><span class="secno">7.2</span> <span class="content">"Guarantee NRVO" in more cases</span></a>
       <li><a href="#explicit-mark"><span class="secno">7.3</span> <span class="content">Require an explicit mark for return variables</span></a>
       <li><a href="#alias-expressions"><span class="secno">7.4</span> <span class="content">Alias expressions</span></a>
      </ol>
@@ -1743,6 +1748,8 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
     <li data-md>
      <p>Added more <a href="#examples">§ 4.1 Examples</a></p>
     <li data-md>
+     <p>Added <a href="#escape-analysis">§ 6.5.1 Complication of escape analysis</a> subsection</p>
+    <li data-md>
      <p>Added <a href="#pin">§ 8.5 std::pin&lt;T> class</a> subsection</p>
     <li data-md>
      <p>Added <a href="#more-temporaries">§ 8.4 Allow temporaries to be created for types other than trivially-copyables</a> subsection</p>
@@ -1760,6 +1767,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
    <p>The implementation could eliminate some copies under the as-if rule or as allowed by <a href="http://eel.is/c++draft/class.copy.elision#1">copy elision</a>. The copy in <code class="highlight"><c- n>bar</c-></code> could be eliminated by Unnamed Return Value Optimization (URVO) and the copy in <code class="highlight"><c- n>foo</c-></code> — by Named Return Value Optimization (NRVO): <code class="highlight"><c- n>widget</c-><c- p>()</c-></code> and <code class="highlight"><c- n>w</c-></code> would be constructed directly into the return slot. Collectively, both optimizations are sometimes known as RVO; confusingly, URVO is sometimes also called RVO. Note that all of these terms are applied to the implementation and to the physical machine, and are not defined in the Standard.</p>
    <p>The updated value category and temporary materialization rules brought by C++17 (informally known as <strong>guaranteed copy elision</strong>) mandated, among everything, that no copies can be made for a returned prvalue expression (except for <a href="http://eel.is/c++draft/class.temporary">trivially copyable</a> class types). This made URVO mandatory in most cases.</p>
    <p>In C++20, the only copy allowed in the example is the one at line 3. Copy elision (NRVO) is allowed there and is routinely performed by most compilers, but is still non-guaranteed, and the <code class="highlight"><c- n>widget</c-></code> class cannot be non-copyable non-movable. With the proposed wording, <code class="highlight"><c- n>x</c-></code> is called a <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable">return variable</a>, and no copy is performed at line 3 — this copy evasion will also informally be called <strong>guaranteed copy elision</strong>.</p>
+   <p>To differentiate between the two kinds of guaranteed copy elision, it is sometimes useful to use informal terms "guaranteed URVO" and "guaranteed NRVO", meaning the respective language features. Unless otherwise specified, "copy elision" refers to the implementation-defined copy elision provided by <a href="http://eel.is/c++draft/class.copy.elision#1">[class.copy.elision]</a>.</p>
    <h2 class="heading settled" data-level="3" id="motivation"><span class="secno">3. </span><span class="content">Motivation</span><a class="self-link" href="#motivation"></a></h2>
    <p>What follows are the examples where the absence of guaranteed copy elision for <a data-link-type="abstract-op" href="#abstract-opdef-to-return-a-variable" id="ref-for-abstract-opdef-to-return-a-variable">returned</a> variables enforces rewriting the code in a way that is less readable or efficient.</p>
    <h3 class="heading settled" data-level="3.1" id="construct-cook-return"><span class="secno">3.1. </span><span class="content">Construct-cook-return</span><a class="self-link" href="#construct-cook-return"></a></h3>
@@ -1767,7 +1775,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
 <pre class="highlight"><c- n>widget</c-> <c- nf>setup_widget</c-><c- p>(</c-><c- b>int</c-> <c- n>x</c-><c- p>)</c-> <c- p>{</c->
   <c- n>widget</c-> <c- n>w</c-><c- p>;</c->
   <c- n>w</c-><c- p>.</c-><c- n>set_x</c-><c- p>(</c-><c- n>x</c-><c- p>);</c->
-  <c- k>return</c-> <c- n>w</c-><c- p>;</c->  <c- c1>// non-guaranteed copy elision</c->
+  <c- k>return</c-> <c- n>w</c-><c- p>;</c->  <c- c1>// move or copy elision</c->
 <c- p>}</c->
 </pre>
    <p>Implementations usually do perform copy elision in such simple cases, but <code class="highlight"><c- n>widget</c-></code> must be at least movable. This situation is unacceptable in these cases, among others:</p>
@@ -1792,13 +1800,13 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
 <pre class="highlight"><c- n>widget</c-> <c- n>widget_owner</c-><c- o>::</c-><c- n>pilfer</c-><c- p>()</c-> <c- p>{</c->
   <c- n>widget</c-> <c- n>w</c-> <c- o>=</c-> <c- k>this</c-><c- o>-></c-><c- n>relocate_internal</c-><c- p>();</c->
   <c- k>this</c-><c- o>-></c-><c- n>cleanup_storage</c-><c- p>();</c->
-  <c- k>return</c-> <c- n>w</c-><c- p>;</c->  <c- c1>// non-guaranteed copy elision</c->
+  <c- k>return</c-> <c- n>w</c-><c- p>;</c->  <c- c1>// move or copy elision</c->
 <c- p>}</c->
 </pre>
-   <p>Unfortunately, such a clean-up work leads to the absence of guaranteed copy elision. It can, however, be worked around using a facility like <code class="highlight"><c- n>scope_success</c-></code> from <a data-link-type="biblio" href="#biblio-p0052r9">[P0052R9]</a>:</p>
+   <p>Unfortunately, such a clean-up work inhibits guaranteed copy elision. This can, however, be worked around using a facility like <code class="highlight"><c- n>scope_success</c-></code> from <a data-link-type="biblio" href="#biblio-p0052r9">[P0052R9]</a>:</p>
 <pre class="highlight"><c- n>widget</c-> <c- n>widget_owner</c-><c- o>::</c-><c- n>pilfer</c-><c- p>()</c-> <c- p>{</c->
   <c- k>auto</c-> <c- n>s</c-> <c- o>=</c-> <c- n>scope_success</c-><c- p>([</c-><c- o>&amp;</c-><c- p>]{</c-> <c- k>this</c-><c- o>-></c-><c- n>cleanup_storage</c-><c- p>();</c-> <c- p>});</c->
-  <c- k>return</c-> <c- k>this</c-><c- o>-></c-><c- n>relocate_internal</c-><c- p>();</c->
+  <c- k>return</c-> <c- k>this</c-><c- o>-></c-><c- n>relocate_internal</c-><c- p>();</c->  <c- c1>// guaranteed copy elision</c->
 <c- p>}</c->
 </pre>
    <p>The code rewritten in such a way is less straightforward and contains the potential overhead of <code class="highlight"><c- n>scope_success</c-></code>.</p>
@@ -1812,7 +1820,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
 </pre>
    <p>In order to deliver on the promise of guaranteed copy elision there, we would have to use the <code class="highlight"><c- n>scope_success</c-></code> trick described above.</p>
    <h2 class="heading settled" data-level="4" id="proposal"><span class="secno">4. </span><span class="content">Proposed solution</span><a class="self-link" href="#proposal"></a></h2>
-   <p>If a returned variable is of the same non-trivially-copyable class type as the return type of the function (ignoring cv-qualification), and all <a href="http://eel.is/c++draft/stmt.if#def:discarded_statement">non-discarded</a> <code class="highlight"><c- k>return</c-></code> statements in its <a href="http://eel.is/c++draft/basic.scope#def:potential_scope">potential scope</a> <a data-link-type="abstract-op" href="#abstract-opdef-to-return-a-variable" id="ref-for-abstract-opdef-to-return-a-variable①">return</a> the variable, then copy elision is guaranteed. The type of the variable is allowed to be non-copyable, non-movable.</p>
+   <p>If a returned variable is of the same non-trivially-copyable class type as the return type of the function (ignoring cv-qualification), and all <a href="http://eel.is/c++draft/stmt.if#def:discarded_statement">non-discarded</a> <code class="highlight"><c- k>return</c-></code> statements in its <a href="http://eel.is/c++draft/basic.scope#def:potential_scope">potential scope</a> <a data-link-type="abstract-op" href="#abstract-opdef-to-return-a-variable" id="ref-for-abstract-opdef-to-return-a-variable①">return</a> the variable, guaranteed copy elision is performed. The type of the variable is allowed to be non-copyable, non-movable.</p>
    <p>(For the purposes of brevity, the explanation above is not rigorous; see <a href="#wording">§ 5 Proposed wording</a> for a rigorous explanation.)</p>
    <p>To state the gist of the main requirement even easier (and even less rigorous):</p>
    <blockquote>
@@ -1836,7 +1844,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- n>widget</c-> <c- nf>setup_widget</c-><c- p>(</c-><c- b>int</c-> <c- n>x</c-><c- p>)</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- k>auto</c-> <c- n>w</c-> <c- o>=</c-> <c- n>widget</c-><c- p>();</c-></span><span class="line-no" data-line="3"></span><span class="line">  <c- n>w</c-><c- p>.</c-><c- n>set_x</c-><c- p>(</c-><c- n>x</c-><c- p>);</c-></span><span class="line-no" data-line="4"></span><span class="line">  <c- k>return</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="5"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
-     <p>✗ Move or non-guaranteed copy elision at line 4</p>
+     <p>✗ Move or copy elision at line 4</p>
     <li data-md>
      <p>✓ Guaranteed copy elision at line 4</p>
    </ul>
@@ -1845,7 +1853,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- n>widget</c-> <c- nf>test</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- p>{</c-></span><span class="line-no" data-line="3"></span><span class="line">    <c- p>{</c-></span><span class="line-no" data-line="4"></span><span class="line">      <c- n>widget</c-> <c- n>w1</c-><c- p>;</c-></span><span class="line-no" data-line="5"></span><span class="line">      <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- k>return</c-> <c- n>w1</c-><c- p>;</c-></span><span class="line-no" data-line="6"></span><span class="line">    <c- p>}</c-></span><span class="line-no" data-line="7"></span><span class="line">    <c- n>widget</c-> <c- n>w2</c-><c- p>;</c-></span><span class="line-no" data-line="8"></span><span class="line">    <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- k>return</c-> <c- n>w2</c-><c- p>;</c-></span><span class="line-no" data-line="9"></span><span class="line">  <c- p>}</c-></span><span class="line-no" data-line="10"></span><span class="line">  <c- n>widget</c-> <c- n>w3</c-><c- p>;</c-></span><span class="line-no" data-line="11"></span><span class="line">  <c- k>return</c-> <c- n>w3</c-><c- p>;</c-></span><span class="line-no" data-line="12"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
-     <p>✗ Move or non-guaranteed copy elision at lines 5, 8, 11</p>
+     <p>✗ Move or copy elision at lines 5, 8, 11</p>
     <li data-md>
      <p>✓ Guaranteed copy elision at lines 5, 8, 11</p>
    </ul>
@@ -1854,78 +1862,78 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- n>widget</c-> <c- nf>test</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- k>if</c-> <c- p>(</c->false<c- p>)</c-> <c- p>{</c-></span><span class="line-no" data-line="3"></span><span class="line">    <c- nl>impossible</c-><c- p>:</c-></span><span class="line-no" data-line="4"></span><span class="line">    <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- k>return</c-> <c- n>widget</c-><c- p>();</c-></span><span class="line-no" data-line="5"></span><span class="line">  <c- p>}</c-></span><span class="line-no" data-line="6"></span><span class="line"></span><span class="line-no" data-line="7"></span><span class="line">  <c- k>while</c-> <c- p>(</c->…<c- p>)</c-> <c- p>{</c-></span><span class="line-no" data-line="8"></span><span class="line">    <c- n>widget</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="9"></span><span class="line">    <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- k>return</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="10"></span><span class="line">    <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- k>break</c-><c- p>;</c-></span><span class="line-no" data-line="11"></span><span class="line">    <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- k>continue</c-><c- p>;</c-></span><span class="line-no" data-line="12"></span><span class="line">    <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- k>goto</c-> <c- n>impossible</c-><c- p>;</c-></span><span class="line-no" data-line="13"></span><span class="line">    <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- k>throw</c-> …<c- p>;</c-></span><span class="line-no" data-line="14"></span><span class="line">    <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- k>return</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="15"></span><span class="line">  <c- p>}</c-></span><span class="line-no" data-line="16"></span><span class="line">  <c- k>return</c-> <c- n>widget</c-><c- p>();</c-></span><span class="line-no" data-line="17"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
-     <p>✗ Move or non-guaranteed copy elision at lines 9 and 14. No copies or moves needed at lines 4 and 16</p>
+     <p>✗ Move or copy elision at lines 9 and 14</p>
     <li data-md>
-     <p>✓ Guaranteed copy elision at lines 9 and 14. No copies or moves needed at lines 4 and 16</p>
+     <p>✓ Guaranteed copy elision at lines 9 and 14</p>
    </ul>
    <h4 class="heading settled" data-level="4.1.5" id="ex-5"><span class="secno">4.1.5. </span><span class="content">Example 5</span><a class="self-link" href="#ex-5"></a></h4>
    <p>Copy elision is not guaranteed at line 4, because the <code class="highlight"><c- k>return</c-></code> statement on line 6, which is within the potential scope of <code class="highlight"><c- n>w</c-></code>, returns non-<code class="highlight"><c- n>w</c-></code>.</p>
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- n>widget</c-> <c- nf>test</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- n>widget</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="3"></span><span class="line">  <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- p>{</c-></span><span class="line-no" data-line="4"></span><span class="line">    <c- k>return</c-> <c- n>w</c-><c- p>;</c->  <c- c1>//!</c-></span><span class="line-no" data-line="5"></span><span class="line">  <c- p>}</c-> <c- k>else</c-> <c- p>{</c-></span><span class="line-no" data-line="6"></span><span class="line">    <c- k>return</c-> <c- n>widget</c-><c- p>();</c-></span><span class="line-no" data-line="7"></span><span class="line">  <c- p>}</c-></span><span class="line-no" data-line="8"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
-     <p>✗✓ Move or non-guaranteed copy elision at line 4. No copies or moves needed at line 6</p>
+     <p>✗✓ Move or copy elision at line 4</p>
    </ul>
    <h4 class="heading settled" data-level="4.1.6" id="ex-6"><span class="secno">4.1.6. </span><span class="content">Example 6</span><a class="self-link" href="#ex-6"></a></h4>
-   <p>The example above can be "fixed" so that guaranteed copy elision does apply. Now all the <code class="highlight"><c- k>return</c-></code> statements within the potential scope of <code class="highlight"><c- n>w</c-></code> (the one on line 4) return <code class="highlight"><c- n>w</c-></code>.</p>
+   <p>The example above can be "fixed" so that guaranteed copy elision is performed. Now all the <code class="highlight"><c- k>return</c-></code> statements within the potential scope of <code class="highlight"><c- n>w</c-></code> (the one on line 4) return <code class="highlight"><c- n>w</c-></code>.</p>
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- n>widget</c-> <c- nf>test</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- p>{</c-></span><span class="line-no" data-line="3"></span><span class="line">    <c- n>widget</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="4"></span><span class="line">    <c- k>return</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="5"></span><span class="line">  <c- p>}</c-> <c- k>else</c-> <c- p>{</c-></span><span class="line-no" data-line="6"></span><span class="line">    <c- k>return</c-> <c- n>widget</c-><c- p>();</c-></span><span class="line-no" data-line="7"></span><span class="line">  <c- p>}</c-></span><span class="line-no" data-line="8"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
-     <p>✗ Move or non-guaranteed copy elision at line 4. No copies or moves needed at line 6</p>
+     <p>✗ Move or copy elision at line 4</p>
     <li data-md>
-     <p>✓ Guaranteed copy elision at line 4. No copies or moves needed at line 6</p>
+     <p>✓ Guaranteed copy elision at line 4</p>
    </ul>
    <h4 class="heading settled" data-level="4.1.7" id="ex-7"><span class="secno">4.1.7. </span><span class="content">Example 7</span><a class="self-link" href="#ex-7"></a></h4>
    <p>Here, <code class="highlight"><c- k>return</c-></code> statement at line 5 is within the potential scope of <code class="highlight"><c- n>one</c-></code> and thus inhibits guaranteed copy elision.</p>
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- n>widget</c-> <c- nf>test</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- n>widget</c-> <c- n>one</c-><c- p>;</c-></span><span class="line-no" data-line="3"></span><span class="line">  <c- k>if</c-> <c- p>(</c-><c- n>toss_a_coin</c-><c- p>())</c-> <c- k>return</c-> <c- n>one</c-><c- p>;</c->  <c- c1>//!</c-></span><span class="line-no" data-line="4"></span><span class="line">  <c- n>widget</c-> <c- n>two</c-><c- p>;</c-></span><span class="line-no" data-line="5"></span><span class="line">  <c- k>return</c-> <c- n>two</c-><c- p>;</c-></span><span class="line-no" data-line="6"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
-     <p>✗ Move or non-guaranteed copy elision at lines 3 and 5</p>
+     <p>✗ Move or copy elision at lines 3 and 5</p>
     <li data-md>
-     <p>✓ Move or non-guaranteed copy elision at line 3. Guaranteed copy elision at line 5</p>
+     <p>✓ Move or copy elision at line 3. Guaranteed copy elision at line 5</p>
    </ul>
    <h4 class="heading settled" data-level="4.1.8" id="ex-8"><span class="secno">4.1.8. </span><span class="content">Example 8</span><a class="self-link" href="#ex-8"></a></h4>
    <p>Constructing, setting up and passing an object as a parameter using an immediately invoked lambda expression (<code class="highlight"><c- n>p</c-></code> is directly initialized under the name of <code class="highlight"><c- n>w</c-></code>).</p>
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- b>void</c-> <c- nf>consume_widget</c-><c- p>(</c-><c- n>widget</c-> <c- n>p</c-><c- p>);</c-></span><span class="line-no" data-line="2"></span><span class="line"></span><span class="line-no" data-line="3"></span><span class="line"><c- b>void</c-> <c- nf>test</c-><c- p>(</c-><c- b>int</c-> <c- n>x</c-><c- p>)</c-> <c- p>{</c-></span><span class="line-no" data-line="4"></span><span class="line">  <c- b>int</c-> <c- n>y</c-> <c- o>=</c-> <c- n>process</c-><c- p>(</c-><c- n>x</c-><c- p>);</c-></span><span class="line-no" data-line="5"></span><span class="line">  <c- n>consume_widget</c-><c- p>([</c-><c- o>&amp;</c-><c- p>]</c-> <c- p>{</c-></span><span class="line-no" data-line="6"></span><span class="line">    <c- k>auto</c-> <c- n>w</c-> <c- o>=</c-> <c- n>widget</c-><c- p>(</c-><c- n>x</c-><c- p>);</c-></span><span class="line-no" data-line="7"></span><span class="line">    <c- n>w</c-><c- p>.</c-><c- n>set_y</c-><c- p>(</c-><c- n>y</c-><c- p>);</c-></span><span class="line-no" data-line="8"></span><span class="line">    <c- k>return</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="9"></span><span class="line">  <c- p>}());</c-></span><span class="line-no" data-line="10"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
-     <p>✗ Move or non-guaranteed copy elision at line 8. No additional copies or moves needed for initialization of <code class="highlight"><c- n>p</c-></code></p>
+     <p>✗ Move or copy elision at line 8. No additional copies or moves needed for initialization of <code class="highlight"><c- n>p</c-></code></p>
     <li data-md>
      <p>✓ Guaranteed copy elision at line 8. No additional copies or moves needed for initialization of <code class="highlight"><c- n>p</c-></code></p>
    </ul>
    <h4 class="heading settled" data-level="4.1.9" id="ex-9"><span class="secno">4.1.9. </span><span class="content">Example 9</span><a class="self-link" href="#ex-9"></a></h4>
-   <p>Guaranteed copy elision is unaffected by a nested class, a lambda capture and a discarded <code class="highlight"><c- k>return</c-></code> statement.</p>
+   <p>Guaranteed copy elision will be unaffected by a nested class, a lambda capture and a discarded <code class="highlight"><c- k>return</c-></code> statement.</p>
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- n>widget</c-> <c- nf>test</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- n>widget</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="3"></span><span class="line">  <c- k>struct</c-> <c- n>s</c-> <c- p>{</c-> <c- n>widget</c-> <c- n>f</c-><c- p>()</c-> <c- p>{</c-> <c- k>return</c-> <c- n>widget</c-><c- p>();</c-> <c- p>}</c-> <c- p>};</c-></span><span class="line-no" data-line="4"></span><span class="line">  <c- k>auto</c-> <c- n>l</c-> <c- o>=</c-> <c- p>[</c-><c- o>&amp;</c-><c- n>w</c-><c- p>]()</c-> <c- p>{</c-> <c- k>return</c-> <c- n>widget</c-><c- p>();</c-> <c- p>}();</c-></span><span class="line-no" data-line="5"></span><span class="line">  <c- k>if</c-> <c- k>constexpr</c-> <c- p>(</c->false<c- p>)</c-> <c- p>{</c-> <c- k>return</c-> <c- n>widget</c-><c- p>();</c-> <c- p>}</c-></span><span class="line-no" data-line="6"></span><span class="line">  <c- k>return</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="7"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
-     <p>✗ Move or non-guaranteed copy elision at line 6</p>
+     <p>✗ Move or copy elision at line 6</p>
     <li data-md>
      <p>✓ Guaranteed copy elision at line 6</p>
    </ul>
    <h4 class="heading settled" data-level="4.1.10" id="ex-10"><span class="secno">4.1.10. </span><span class="content">Example 10</span><a class="self-link" href="#ex-10"></a></h4>
-   <p>Guaranteed copy elision will apply in constant evaluation context, and will be guaranteed when possible.</p>
+   <p>Guaranteed copy elision will be allowed in constant evaluation context, and will be guaranteed when possible.</p>
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- k>constexpr</c-> <c- n>widget</c-> <c- nf>test1</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- n>widget</c-> <c- n>x</c-><c- p>;</c-></span><span class="line-no" data-line="3"></span><span class="line">  <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- k>return</c-> <c- n>x</c-><c- p>;</c-></span><span class="line-no" data-line="4"></span><span class="line">  <c- n>widget</c-> <c- n>y</c-><c- p>;</c-></span><span class="line-no" data-line="5"></span><span class="line">  <c- k>return</c-> <c- n>y</c-><c- p>;</c-></span><span class="line-no" data-line="6"></span><span class="line"><c- p>}</c-></span><span class="line-no" data-line="7"></span><span class="line"><c- k>constinit</c-> <c- n>widget</c-> <c- n>z</c-> <c- o>=</c-> <c- n>test1</c-><c- p>();</c-></span><span class="line-no" data-line="8"></span><span class="line"></span><span class="line-no" data-line="9"></span><span class="line"><c- k>consteval</c-> <c- n>std</c-><c- o>::</c-><c- n>mutex</c-> <c- n>test2</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="10"></span><span class="line">  <c- n>std</c-><c- o>::</c-><c- n>mutex</c-> <c- n>x</c-><c- p>;</c-></span><span class="line-no" data-line="11"></span><span class="line">  <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- k>return</c-> <c- n>x</c-><c- p>;</c-></span><span class="line-no" data-line="12"></span><span class="line">  <c- n>std</c-><c- o>::</c-><c- n>mutex</c-> <c- n>y</c-><c- p>;</c-></span><span class="line-no" data-line="13"></span><span class="line">  <c- k>return</c-> <c- n>y</c-><c- p>;</c-></span><span class="line-no" data-line="14"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
-     <p>✗ Move at lines 3 and 5 (copy elision cannot apply), error at lines 11 and 13 (copy elision cannot apply)</p>
+     <p>✗ Move at lines 3 and 5 (copy elision is not allowed), error at lines 11 and 13 (copy elision is not allowed)</p>
     <li data-md>
-     <p>✓ Guaranteed copy elision at lines 3 and 11, move or non-guaranteed copy elision at line 5, error at line 13 (only non-guaranteed copy elision is applied here)</p>
+     <p>✓ Guaranteed copy elision at lines 5 and 13, move or copy elision at line 3, error at line 11</p>
    </ul>
    <h4 class="heading settled" data-level="4.1.11" id="ex-11"><span class="secno">4.1.11. </span><span class="content">Example 11</span><a class="self-link" href="#ex-11"></a></h4>
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- b>void</c-> <c- nf>foo</c-><c- p>();</c->  <c- c1>// throws a widget</c-></span><span class="line-no" data-line="2"></span><span class="line"></span><span class="line-no" data-line="3"></span><span class="line"><c- n>widget</c-> <c- nf>test</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="4"></span><span class="line">  <c- k>try</c-> <c- p>{</c-></span><span class="line-no" data-line="5"></span><span class="line">    <c- n>foo</c-><c- p>();</c-></span><span class="line-no" data-line="6"></span><span class="line">  <c- p>}</c-> <c- k>catch</c-> <c- p>(</c-><c- n>widget</c-> <c- n>w</c-><c- p>)</c-> <c- p>{</c->  <c- c1>//!</c-></span><span class="line-no" data-line="7"></span><span class="line">    <c- n>watch</c-><c- p>(</c-><c- n>w</c-><c- p>);</c-></span><span class="line-no" data-line="8"></span><span class="line">    <c- k>return</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="9"></span><span class="line">  <c- p>}</c-></span><span class="line-no" data-line="10"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
-     <p>✗ Copy or non-guaranteed copy elision at line 6 (<a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a>). Move or non-guaranteed copy elision at line 8</p>
+     <p>✗ Copy or copy elision at line 6 (<a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a>). Move or copy elision at line 8</p>
     <li data-md>
-     <p>✓ Copy or non-guaranteed copy elision at line 6 (<a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a>). Guaranteed copy elision at line 8</p>
+     <p>✓ Copy or copy elision at line 6 (<a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a>). Guaranteed copy elision at line 8</p>
    </ul>
    <p>See also: <a href="#req-value-exeptions">§ 6.2.3 Exception-declarations can introduce return variables</a></p>
    <h4 class="heading settled" data-level="4.1.12" id="ex-12"><span class="secno">4.1.12. </span><span class="content">Example 12</span><a class="self-link" href="#ex-12"></a></h4>
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- n>widget</c-> <c- nf>test</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- n>widget</c-> <c- n>x</c-><c- p>;</c-></span><span class="line-no" data-line="3"></span><span class="line">  <c- k>if</c-> <c- p>(</c-><c- n>toss_a_coin</c-><c- p>())</c-> <c- k>return</c-> <c- p>(</c-><c- n>x</c-><c- p>);</c->  <c- c1>//!</c-></span><span class="line-no" data-line="4"></span><span class="line">  <c- n>widget</c-> <c- n>y</c-><c- p>;</c-></span><span class="line-no" data-line="5"></span><span class="line">  <c- k>return</c-> <c- p>((</c-><c- n>y</c-><c- p>));</c-></span><span class="line-no" data-line="6"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
-     <p>✗ Move at lines 3 and 5 (copy elision cannot apply, but implementations do copy elision in this case anyway)</p>
+     <p>✗ Move at lines 3 and 5 (copy elision in not allowed, but implementations perform copy elision in this case anyway)</p>
     <li data-md>
-     <p>✓ Move or non-guaranteed copy elision at line 3. Guaranteed copy elision at line 5</p>
+     <p>✓ Move or copy elision at line 3. Guaranteed copy elision at line 5</p>
    </ul>
    <p>See also: <a href="#req-parentheses">§ 6.2.1 Parentheses are now allowed around the variable name</a></p>
    <h4 class="heading settled" data-level="4.1.13" id="ex-13"><span class="secno">4.1.13. </span><span class="content">Example 13</span><a class="self-link" href="#ex-13"></a></h4>
@@ -1933,7 +1941,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- k>struct</c-> <c- n>gadget</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- n>gadget</c-><c- o>*</c-> <c- n>p</c-><c- p>;</c-></span><span class="line-no" data-line="3"></span><span class="line">  <c- n>gadget</c-><c- p>()</c-> <c- o>:</c-> <c- n>p</c-><c- p>(</c-><c- k>this</c-><c- p>)</c-> <c- p>{}</c-></span><span class="line-no" data-line="4"></span><span class="line"><c- p>};</c-></span><span class="line-no" data-line="5"></span><span class="line"></span><span class="line-no" data-line="6"></span><span class="line"><c- n>gadget</c-> <c- nf>test</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="7"></span><span class="line">  <c- n>gadget</c-> <c- n>x</c-><c- p>;</c-></span><span class="line-no" data-line="8"></span><span class="line">  <c- k>return</c-> <c- n>x</c-><c- p>;</c->  <c- c1>//!</c-></span><span class="line-no" data-line="9"></span><span class="line"><c- p>}</c-></span><span class="line-no" data-line="10"></span><span class="line"><c- n>gadget</c-> <c- n>y</c-> <c- o>=</c-> <c- n>test</c-><c- p>();</c-></span></pre>
    <ul>
     <li data-md>
-     <p>✗ Trivial copy or non-guaranteed copy elision at line 8. An additional copy may be introduced. It is implementation-defined whether <code class="highlight"><c- n>x</c-></code> and <code class="highlight"><c- n>y</c-></code> name the same object and whether <code class="highlight"><c- n>y</c-><c- p>.</c-><c- n>p</c-></code> dangles</p>
+     <p>✗ Trivial copy or copy elision at line 8. An additional copy may be introduced. It is implementation-defined whether <code class="highlight"><c- n>x</c-></code> and <code class="highlight"><c- n>y</c-></code> name the same object and whether <code class="highlight"><c- n>y</c-><c- p>.</c-><c- n>p</c-></code> dangles</p>
     <li data-md>
      <p>✓ Guaranteed copy elision at line 8. An additional copy may be introduced. It is implementation-defined whether <code class="highlight"><c- n>x</c-></code> and <code class="highlight"><c- n>y</c-></code> name the same object and whether <code class="highlight"><c- n>y</c-><c- p>.</c-><c- n>p</c-></code> dangles</p>
    </ul>
@@ -1943,7 +1951,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- k>using</c-> <c- n>large</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- b>intmax_t</c-><c- p>;</c-></span><span class="line-no" data-line="2"></span><span class="line"></span><span class="line-no" data-line="3"></span><span class="line"><c- n>large</c-> <c- nf>test</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="4"></span><span class="line">  <c- n>large</c-> <c- n>x</c-> <c- o>=</c-> <c- mi>42</c-><c- p>;</c-></span><span class="line-no" data-line="5"></span><span class="line">  <c- k>return</c-> <c- n>x</c-><c- p>;</c-></span><span class="line-no" data-line="6"></span><span class="line"><c- p>}</c-></span><span class="line-no" data-line="7"></span><span class="line"></span><span class="line-no" data-line="8"></span><span class="line"><c- n>large</c-> <c- n>a</c-> <c- o>=</c-> <c- n>test</c-><c- p>();</c-></span><span class="line-no" data-line="9"></span><span class="line"><c- n>large</c-> <c- n>b</c-> <c- o>=</c-> <c- n>test</c-><c- p>()</c-> <c- o>+</c-> <c- n>test</c-><c- p>();</c-></span><span class="line-no" data-line="10"></span><span class="line"><c- b>signed</c-> <c- b>char</c-> <c- n>c</c-> <c- o>=</c-> <c- n>test</c-><c- p>();</c-></span></pre>
    <ul>
     <li data-md>
-     <p>✗ Trivial copy at line 5 (copy elision cannot apply). An additional copy may be introduced. It is implementation-defined whether <code class="highlight"><c- n>x</c-></code> and <code class="highlight"><c- n>a</c-></code> name the same object</p>
+     <p>✗ Trivial copy at line 5 (copy elision is not allowed). An additional copy may be introduced. It is implementation-defined whether <code class="highlight"><c- n>x</c-></code> and <code class="highlight"><c- n>a</c-></code> name the same object</p>
     <li data-md>
      <p>✓ Guaranteed copy elision at line 5. An additional copy may be introduced. It is implementation-defined whether <code class="highlight"><c- n>x</c-></code> and <code class="highlight"><c- n>a</c-></code> name the same object</p>
    </ul>
@@ -1952,17 +1960,25 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- k>template</c-> <c- o>&lt;</c-><c- b>bool</c-> <c- n>B</c-><c- o>></c-></span><span class="line-no" data-line="2"></span><span class="line"><c- n>widget</c-> <c- n>test</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="3"></span><span class="line">  <c- n>widget</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="4"></span><span class="line">  <c- k>if</c-> <c- nf>constexpr</c-> <c- p>(</c-><c- n>B</c-><c- p>)</c-> <c- p>{</c-></span><span class="line-no" data-line="5"></span><span class="line">    <c- k>if</c-> <c- p>(</c->false<c- p>)</c-> <c- k>return</c-> <c- n>widget</c-><c- p>();</c-></span><span class="line-no" data-line="6"></span><span class="line">  <c- p>}</c-></span><span class="line-no" data-line="7"></span><span class="line">  <c- k>return</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="8"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
-     <p>✗ Move or non-guaranteed copy elision at line 7</p>
+     <p>✗ Move or copy elision at line 7</p>
     <li data-md>
-     <p>✓ In the instantiation where <code class="highlight"><c- n>B</c-> <c- o>==</c-> false</code>, guaranteed copy elision at line 7. In the instantiation where <code class="highlight"><c- n>B</c-> <c- o>==</c-> true</code>, move or non-guaranteed copy elision at line 7</p>
+     <p>✓ In the instantiation where <code class="highlight"><c- n>B</c-> <c- o>==</c-> false</code>, guaranteed copy elision at line 7. In the instantiation where <code class="highlight"><c- n>B</c-> <c- o>==</c-> true</code>, move or copy elision at line 7</p>
    </ul>
    <h4 class="heading settled" data-level="4.1.16" id="ex-16"><span class="secno">4.1.16. </span><span class="content">Example 16</span><a class="self-link" href="#ex-16"></a></h4>
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- k>const</c-> <c- k>volatile</c-> <c- n>widget</c-> <c- nf>foo</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- n>widget</c-> <c- n>a</c-><c- p>;</c-></span><span class="line-no" data-line="3"></span><span class="line">  <c- n>a</c-><c- p>.</c-><c- n>mutate</c-><c- p>();</c->  <c- c1>// OK</c-></span><span class="line-no" data-line="4"></span><span class="line">  <c- k>return</c-> <c- n>a</c-><c- p>;</c-></span><span class="line-no" data-line="5"></span><span class="line"><c- p>}</c-></span><span class="line-no" data-line="6"></span><span class="line"><c- k>auto</c-> <c- n>b</c-> <c- o>=</c-> <c- n>foo</c-><c- p>();</c-></span><span class="line-no" data-line="7"></span><span class="line"></span><span class="line-no" data-line="8"></span><span class="line"><c- n>widget</c-> <c- nf>bar</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="9"></span><span class="line">  <c- k>if</c-> <c- p>(</c->…<c- p>)</c-> <c- p>{</c-></span><span class="line-no" data-line="10"></span><span class="line">    <c- k>const</c-> <c- n>widget</c-> <c- n>c</c-><c- p>;</c-></span><span class="line-no" data-line="11"></span><span class="line">    <c- c1>// c.mutate();  // ERROR</c-></span><span class="line-no" data-line="12"></span><span class="line">    <c- c1>// const_cast&lt;widget&amp;>(c).mutate();  // UB</c-></span><span class="line-no" data-line="13"></span><span class="line">    <c- k>return</c-> <c- n>c</c-><c- p>;</c-></span><span class="line-no" data-line="14"></span><span class="line">  <c- p>}</c-></span><span class="line-no" data-line="15"></span><span class="line">  <c- k>volatile</c-> <c- n>widget</c-> <c- n>d</c-><c- p>;</c-></span><span class="line-no" data-line="16"></span><span class="line">  <c- k>return</c-> <c- n>d</c-><c- p>;</c->  <c- c1>//!</c-></span><span class="line-no" data-line="17"></span><span class="line"><c- p>}</c-></span><span class="line-no" data-line="18"></span><span class="line"><c- k>auto</c-> <c- n>e</c-> <c- o>=</c-> <c- n>foo</c-><c- p>();</c-></span><span class="line-no" data-line="19"></span><span class="line"></span><span class="line-no" data-line="20"></span><span class="line"><c- b>void</c-> <c- nf>baz</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="21"></span><span class="line">  <c- c1>// b.mutate();  // ERROR</c-></span><span class="line-no" data-line="22"></span><span class="line">  <c- c1>// const_cast&lt;widget&amp;>(b).mutate();  // UB</c-></span><span class="line-no" data-line="23"></span><span class="line">  <c- n>e</c-><c- p>.</c-><c- n>mutate</c-><c- p>();</c->  <c- c1>// OK</c-></span><span class="line-no" data-line="24"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
-     <p>✗ Move or non-guaranteed copy elision at lines 4 and 13. Move at line 16 (copy elision cannot apply)</p>
+     <p>✗ Move or copy elision at lines 4 and 13. Move at line 16 (copy elision is not allowed)</p>
     <li data-md>
-     <p>✓ Guaranteed copy elision at lines 4 and 13. Move at line 16 (copy elision cannot apply)</p>
+     <p>✓ Guaranteed copy elision at lines 4 and 13. Move at line 16 (copy elision is not allowed)</p>
+   </ul>
+   <h4 class="heading settled" data-level="4.1.17" id="ex-17"><span class="secno">4.1.17. </span><span class="content">Example 17</span><a class="self-link" href="#ex-17"></a></h4>
+<pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- k>extern</c-> <c- n>widget</c-> <c- n>x</c-><c- p>;</c-></span><span class="line-no" data-line="2"></span><span class="line"></span><span class="line-no" data-line="3"></span><span class="line"><c- n>widget</c-> <c- nf>foo</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="4"></span><span class="line">  <c- n>widget</c-> <c- n>y</c-><c- p>;</c-></span><span class="line-no" data-line="5"></span><span class="line">  <c- k>if</c-> <c- p>(</c-><c- o>&amp;</c-><c- n>x</c-> <c- o>==</c-> <c- o>&amp;</c-><c- n>y</c-><c- p>)</c-> <c- p>{</c->  <c- c1>// true</c-></span><span class="line-no" data-line="6"></span><span class="line">    <c- k>throw</c-> <c- n>y</c-><c- p>;</c-></span><span class="line-no" data-line="7"></span><span class="line">  <c- p>}</c-></span><span class="line-no" data-line="8"></span><span class="line">  <c- k>return</c-> <c- n>y</c-><c- p>;</c-></span><span class="line-no" data-line="9"></span><span class="line"><c- p>}</c-></span><span class="line-no" data-line="10"></span><span class="line"></span><span class="line-no" data-line="11"></span><span class="line"><c- n>widget</c-> <c- n>x</c-> <c- o>=</c-> <c- n>foo</c-><c- p>();</c-></span></pre>
+   <ul>
+    <li data-md>
+     <p>✗ Move or copy elision at line 8</p>
+    <li data-md>
+     <p>✓ Guaranteed copy elision at line 8</p>
    </ul>
    <h2 class="heading settled" data-level="5" id="wording"><span class="secno">5. </span><span class="content">Proposed wording</span><a class="self-link" href="#wording"></a></h2>
    <p>The wording in this section is relative to WG21 draft <a data-link-type="biblio" href="#biblio-n4861">[N4861]</a>.</p>
@@ -2103,30 +2119,20 @@ See also <a href="#non-class">§ 6.4 What about copy elision for non-class typ
    <h3 class="heading settled" data-level="6.2" id="req-change"><span class="secno">6.2. </span><span class="content">Have requirements for copy elision changed?</span><a class="self-link" href="#req-change"></a></h3>
    <p>There are multiple issues with current wording for copy elision. While <a href="http://eel.is/c++draft/class.copy.elision#3">[class.copy.elision]/3</a> has recently been updated (<a data-link-type="biblio" href="#biblio-p0527r1">[P0527R1]</a>, <a data-link-type="biblio" href="#biblio-p1155r3">[P1155R3]</a>, <a data-link-type="biblio" href="#biblio-p1825r0">[P1825R0]</a>), <a href="http://eel.is/c++draft/class.copy.elision#1">[class.copy.elision]/1</a> has not. Proposed wording cleans up those issues.</p>
    <h4 class="heading settled" data-level="6.2.1" id="req-parentheses"><span class="secno">6.2.1. </span><span class="content">Parentheses are now allowed around the variable name</span><a class="self-link" href="#req-parentheses"></a></h4>
-   <blockquote>
-    <del>[…] the <em>expression</em> is the name of […]</del>
-    <ins>[…] a (possibly parenthesized) <em>id-expression</em> […]</ins>
-   </blockquote>
    <p>See <a href="#ex-12">§ 4.1.12 Example 12</a>. <code class="highlight"><c- n>x</c-></code> is considered a <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①②">return variable</a>, and <code class="highlight"><c- n>y</c-></code> a <a data-link-type="abstract-op" href="#abstract-opdef-potential-return-variable" id="ref-for-abstract-opdef-potential-return-variable②">potential return variable</a>.</p>
    <p>Meanwhile, at the time of writing, copy elision is not allowed for parenthesized variables.</p>
    <p>Implementation divergence has been discovered. Clang and MSVC currently does perform copy elision there, but GCC does not. Consequently, this change may be delivered in a Defect Report.</p>
-   <h4 class="heading settled" data-level="6.2.2" id="req-lambda"><span class="secno">6.2.2. </span><span class="content">Copy elision no longer applies to lambda captures</span><a class="self-link" href="#req-lambda"></a></h4>
-   <blockquote>
-    <ins>[…] unless the variable is captured by a <em>lambda-expression</em> enclosing the <code class="highlight"><c- k>return</c-></code> statement […]</ins>
-   </blockquote>
-   <p>In the following case, name lookup for <code class="highlight"><c- n>w</c-></code> at line 4 finds exactly the outer <code class="highlight"><c- n>w</c-></code> variable. The <code class="highlight"><c- n>w</c-></code> expression does satisfy the "name of a non-volatile object with automatic storage duration" condition. Therefore, copy elision can currently apply to the inner return statement. This seems unintentional; none of the major compilers apply copy elision in this case.</p>
+   <h4 class="heading settled" data-level="6.2.2" id="req-lambda"><span class="secno">6.2.2. </span><span class="content">Copy elision is no longer allowed for lambda captures</span><a class="self-link" href="#req-lambda"></a></h4>
+   <p>In the following case, name lookup for <code class="highlight"><c- n>w</c-></code> at line 4 finds exactly the outer <code class="highlight"><c- n>w</c-></code> variable. The <code class="highlight"><c- n>w</c-></code> expression does satisfy the "name of a non-volatile object with automatic storage duration" condition. Therefore, copy elision is currently allowed for the inner return statement. This seems unintentional; none of the major compilers performs copy elision in this case.</p>
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- n>widget</c-> <c- nf>foo</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- n>widget</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="3"></span><span class="line">  <c- k>return</c-> <c- p>[</c-><c- o>&amp;</c-><c- n>w</c-><c- p>]</c-> <c- p>{</c-></span><span class="line-no" data-line="4"></span><span class="line">    <c- k>return</c-> <c- n>w</c-><c- p>;</c-></span><span class="line-no" data-line="5"></span><span class="line">  <c- p>}();</c-></span><span class="line-no" data-line="6"></span><span class="line"><c- p>}</c-></span></pre>
    <ul>
     <li data-md>
      <p>✗ Move or non-guaranteed copy elision (?!) at line 4. No copies or moves needed for <code class="highlight"><c- k>return</c-></code> at line 3</p>
     <li data-md>
-     <p>✓ Move at line 4 (copy elision cannot apply). No copies or moves needed for <code class="highlight"><c- k>return</c-></code> at line 3</p>
+     <p>✓ Move at line 4 (copy elision is not allowed). No copies or moves needed for <code class="highlight"><c- k>return</c-></code> at line 3</p>
    </ul>
    <p>This case will no longer be eligible for copy elision under the proposed wording. This change may be delivered in a Defect Report as well.</p>
    <h4 class="heading settled" data-level="6.2.3" id="req-value-exeptions"><span class="secno">6.2.3. </span><span class="content">Exception-declarations can introduce return variables</span><a class="self-link" href="#req-value-exeptions"></a></h4>
-   <blockquote>
-    <del>other than […] or a variable introduced by the <em>exception-declaration</em> of a <em>handler</em> (<a href="http://eel.is/c++draft/except.handle">[except.handle]</a> </del>
-   </blockquote>
    <blockquote class="note warning-note"> Note:
 Guaranteed copy elision will only affect exceptions caught by value ("by copy"). Exceptions caught by reference are not affected. </blockquote>
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- k>struct</c-> <c- n>widget</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- n>widget</c-><c- p>();</c-></span><span class="line-no" data-line="3"></span><span class="line">  <c- n>widget</c-><c- p>(</c-><c- k>const</c-> <c- n>widget</c-><c- o>&amp;</c-><c- p>);</c-></span><span class="line-no" data-line="4"></span><span class="line">  <c- n>widget</c-><c- p>(</c-><c- n>widget</c-><c- o>&amp;&amp;</c-><c- p>);</c-></span><span class="line-no" data-line="5"></span><span class="line"><c- p>};</c-></span><span class="line-no" data-line="6"></span><span class="line"></span><span class="line-no" data-line="7"></span><span class="line"><c- b>void</c-> <c- nf>bar</c-><c- p>();</c-></span><span class="line-no" data-line="8"></span><span class="line"><c- b>bool</c-> <c- nf>toss_a_coin</c-><c- p>();</c-></span><span class="line-no" data-line="9"></span><span class="line"></span><span class="line-no" data-line="10"></span><span class="line"><c- n>widget</c-> <c- nf>foo</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="11"></span><span class="line">  <c- k>try</c-> <c- p>{</c-></span><span class="line-no" data-line="12"></span><span class="line">    <c- n>bar</c-><c- p>();</c-></span><span class="line-no" data-line="13"></span><span class="line">  <c- p>}</c-> <c- k>catch</c-> <c- p>(</c-><c- n>widget</c-> <c- n>w</c-><c- p>)</c-> <c- p>{</c->            <c- c1>// (1.4)</c-></span><span class="line-no" data-line="14"></span><span class="line">    <c- n>use</c-><c- p>(</c-><c- n>w</c-><c- p>);</c-></span><span class="line-no" data-line="15"></span><span class="line">    <c- k>if</c-> <c- p>(</c-><c- n>toss_a_coin</c-><c- p>())</c-> <c- k>return</c-> <c- n>w</c-><c- p>;</c->  <c- c1>// (1.1)</c-></span><span class="line-no" data-line="16"></span><span class="line">  <c- p>}</c-></span><span class="line-no" data-line="17"></span><span class="line">  <c- k>return</c-> <c- n>widget</c-><c- p>();</c-></span><span class="line-no" data-line="18"></span><span class="line"><c- p>}</c-></span></pre>
@@ -2211,6 +2217,7 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
    <p>While <code class="highlight"><c- n>x</c-></code> and <code class="highlight"><c- n>y</c-></code> represent the same object "in the metal", they name different objects in the current C++ sense of "object", thus they compare unequal.</p>
    <p>The proposed wording suggests being more honest in this regard by saying that a function with object return type always has a result object, and then by allowing non-class object types to participate in copy elision on equal rights with trivially-copyable objects.</p>
    <p>See also: <a href="#ex-14">§ 4.1.14 Example 14</a></p>
+   <blockquote class="issue" id="issue-6b2a45ae"><a class="self-link" href="#issue-6b2a45ae"></a> Should copy elision for non-class types belong to a separate proposal? </blockquote>
    <h3 class="heading settled" data-level="6.5" id="invalidation"><span class="secno">6.5. </span><span class="content">What about the invalidation of optimizations?</span><a class="self-link" href="#invalidation"></a></h3>
    <p>Observe an example:</p>
 <pre class="highlight line-numbered"><span class="line-no" data-line="1"></span><span class="line"><c- k>struct</c-> <c- n>A</c-> <c- p>{</c-></span><span class="line-no" data-line="2"></span><span class="line">  <c- b>int</c-> <c- n>x</c-><c- p>;</c-></span><span class="line-no" data-line="3"></span><span class="line">  <c- n>A</c-><c- p>(</c-><c- b>int</c-> <c- n>x</c-><c- p>)</c-> <c- o>:</c-> <c- n>x</c-><c- p>(</c-><c- n>x</c-><c- p>)</c-> <c- p>{}</c-></span><span class="line-no" data-line="4"></span><span class="line">  <c- n>A</c-><c- p>(</c-><c- k>const</c-> <c- n>A</c-><c- o>&amp;</c-> <c- n>o</c-><c- p>)</c-> <c- o>:</c-> <c- n>x</c-><c- p>(</c-><c- n>o</c-><c- p>.</c-><c- n>x</c-><c- p>)</c-> <c- p>{}</c-></span><span class="line-no" data-line="5"></span><span class="line"><c- p>};</c-></span><span class="line-no" data-line="6"></span><span class="line"><c- k>extern</c-> <c- n>A</c-> <c- n>global</c-><c- p>;</c-></span><span class="line-no" data-line="7"></span><span class="line"></span><span class="line-no" data-line="8"></span><span class="line"><c- n>A</c-> <c- nf>foo</c-><c- p>()</c-> <c- p>{</c-></span><span class="line-no" data-line="9"></span><span class="line">  <c- n>A</c-> <c- n>local</c-><c- p>(</c-><c- mi>2</c-><c- p>);</c-></span><span class="line-no" data-line="10"></span><span class="line">  <c- n>local</c-><c- p>.</c-><c- n>x</c-> <c- o>+=</c-> <c- n>global</c-><c- p>.</c-><c- n>x</c-><c- p>;</c-></span><span class="line-no" data-line="11"></span><span class="line">  <c- k>return</c-> <c- n>local</c-><c- p>;</c-></span><span class="line-no" data-line="12"></span><span class="line"><c- p>}</c-></span></pre>
@@ -2220,16 +2227,45 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
 <c- p>}</c->
 </pre>
    <p>Under this proposal, <code class="highlight"><c- n>local</c-></code> and <code class="highlight"><c- n>global</c-></code> can be assumed to be distinct too, for a different reason. Inside <code class="highlight"><c- n>A</c-> <c- n>global</c-> <c- o>=</c-> <c- n>foo</c-><c- p>();</c-></code>, <code class="highlight"><c- n>global</c-></code> and <code class="highlight"><c- n>local</c-></code> are guaranteed to denote the same object, because <code class="highlight"><c- n>local</c-></code> is a <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①③">return variable</a>. Before <code class="highlight"><c- n>foo</c-></code> returns, the value of <code class="highlight"><c- n>local</c-><c- p>.</c-><c- n>x</c-></code> is accessed through glvalue <code class="highlight"><c- n>global</c-><c- p>.</c-><c- n>x</c-></code> that is not obtained from <code class="highlight"><c- n>local</c-></code>, thus the value of <code class="highlight"><c- n>global</c-><c- p>.</c-><c- n>x</c-></code> is unspecified.</p>
-   <p>In summary, no optimizations will be invalidated. Code which would require invalidation of optimizations for its correctness is kept incorrect.</p>
+   <p>In summary, code which would require invalidation of optimizations for its correctness is kept incorrect.</p>
+   <h4 class="heading settled" data-level="6.5.1" id="escape-analysis"><span class="secno">6.5.1. </span><span class="content">Complication of escape analysis</span><a class="self-link" href="#escape-analysis"></a></h4>
+   <p>Previously, implementations could choose to never perform copy elision (<a href="http://eel.is/c++draft/class.copy.elision#1.1">[class.copy.elision]/(1.1)</a>) for some non-trivially-copyable class types. For these classes, the implementation could assume that the address of a local variable never escapes:</p>
+<pre class="highlight"><c- k>struct</c-> <c- n>widget</c-> <c- p>{</c->
+  <c- n>widget</c-><c- p>()</c-> <c- p>{</c-> <c- p>}</c->
+  <c- n>widget</c-><c- p>(</c-><c- n>widget</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- p>{</c-> <c- p>}</c->
+<c- p>};</c->
+
+<c- n>widget</c-> <c- nf>foo</c-><c- p>();</c->   <c- c1>// invisible implementation</c->
+<c- n>widget</c-><c- o>*</c-> <c- nf>bar</c-><c- p>();</c->  <c- c1>// invisible implementation</c->
+
+<c- b>void</c-> <c- nf>test</c-><c- p>()</c-> <c- p>{</c->
+  <c- n>widget</c-> <c- n>x</c-> <c- o>=</c-> <c- n>foo</c-><c- p>();</c->
+  <c- k>if</c-> <c- p>(</c-><c- o>&amp;</c-><c- n>x</c-> <c- o>==</c-> <c- n>bar</c-><c- p>())</c-> <c- k>throw</c-> <c- s>"impossible"</c-><c- p>;</c->
+<c- p>}</c->
+</pre>
+   <p>Under the proposed wording, <code class="highlight"><c- n>test</c-></code> is guaranteed to throw if we define <code class="highlight"><c- n>foo</c-></code> and <code class="highlight"><c- n>bar</c-></code> as follows:</p>
+<pre class="highlight"><c- n>widget</c-><c- o>*</c-> <c- n>py</c-><c- p>;</c->
+
+<c- n>widget</c-> <c- nf>foo</c-><c- p>()</c-> <c- p>{</c->
+  <c- n>widget</c-> <c- n>y</c-><c- p>;</c->
+  <c- n>py</c-> <c- o>=</c-> <c- o>&amp;</c-><c- n>y</c-><c- p>;</c->
+  <c- k>return</c-> <c- n>y</c-><c- p>;</c->
+<c- p>}</c->
+
+<c- n>widget</c-><c- o>*</c-> <c- nf>bar</c-><c- p>()</c-> <c- p>{</c->
+  <c- k>return</c-> <c- n>py</c-><c- p>;</c->
+<c- p>}</c->
+</pre>
+   <p>Accounting for such cases will lead to pessimizations for some implementations.</p>
    <h3 class="heading settled" data-level="6.6" id="abi"><span class="secno">6.6. </span><span class="content">Are the proposed changes source or ABI breaking?</span><a class="self-link" href="#abi"></a></h3>
    <p>Propored changes <em>can break</em> constant expressions that rely on effects of the copy-initialization and destruction that are proposed to be elided. The defect report <a data-link-type="biblio" href="#biblio-cwg2278">[CWG2278]</a>, requiring that copy elision is not performed in constant expressions, has been presented in March, 2018. However, relying on the effects of copy-initialization and destruction in constant expressions is considered exotic, and real-world code breakage is deemed to be minimal.</p>
-   <p>The proposal prohibits some corner-case copy elision (<a href="#req-lambda">§ 6.2.2 Copy elision no longer applies to lambda captures</a>), which was most probably a defect. Note that previously, copy elision could not be relied upon by portable programs.</p>
-   <p>The proposal allows some new cases of copy elision described in previous sub-sections. Programs that relied on copy elision not applying there (corner-case scenarios) will no longer be valid.</p>
-   <p>The proposal is <em>not</em> ABI-breaking, because, in all known implementations, whether NRVO is applied for a function does not impact its calling convention.</p>
+   <p>The proposal prohibits some corner-case copy elision (<a href="#req-lambda">§ 6.2.2 Copy elision is no longer allowed for lambda captures</a>), which was most probably a defect. Note that previously, copy elision could not be relied upon by portable programs.</p>
+   <p>The proposal allows some new cases of copy elision described in previous sub-sections. Programs that relied on copy elision not being performed there (corner-case scenarios) will no longer be valid.</p>
+   <p>The proposal is <em>not</em> ABI-breaking, because, in all known implementations, whether NRVO is performed for a function does not impact its calling convention.</p>
    <h3 class="heading settled" data-level="6.7" id="costs"><span class="secno">6.7. </span><span class="content">What are the costs associated with the proposed changes?</span><a class="self-link" href="#costs"></a></h3>
    <p>There is no runtime cost associated with the proposed copy elision, because storage for the return object is allocated on stack before the function body starts executing, in all known implementations.</p>
    <p>The proposal will make declarations of local variables with automatic storage duration context-dependent: storage of a variable will depend on <code class="highlight"><c- k>return</c-></code> statements in its potential scope. However, this analysis is local and purely syntactic. The impact on compilation times is thus deemed to be minimal.</p>
-   <p>Compilers that already do NRVO will enable it (or at least the required part of it) in all compilation modes. The proposal might even have a positive impact on compilation time, because such implementations will not have to check whether copy-initialization on the return type can be performed.</p>
+   <p>Compilers that already perform NRVO will enable it (or at least the required part of it) in all compilation modes. The proposal might even have a positive impact on compilation time, because such implementations will not have to check whether copy-initialization on the return type can be performed.</p>
    <h2 class="heading settled" data-level="7" id="alternatives"><span class="secno">7. </span><span class="content">Alternative solutions</span><a class="self-link" href="#alternatives"></a></h2>
    <h3 class="heading settled" data-level="7.1" id="existing-features"><span class="secno">7.1. </span><span class="content">Implement similar functionality using existing features</span><a class="self-link" href="#existing-features"></a></h3>
    <p>We can implement similar functionality, with cooperation from the returned object type, in some cases.</p>
@@ -2249,7 +2285,7 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
 <c- p>}</c->
 </pre>
    <p>However, it requires cooperation from <code class="highlight"><c- n>widget</c-></code> and breaks when some of its other constructors accept an invocable parameter. We cannot implement this functionality in general.</p>
-   <h3 class="heading settled" data-level="7.2" id="more-nrvo"><span class="secno">7.2. </span><span class="content">Guarantee "NRVO" in more cases</span><a class="self-link" href="#more-nrvo"></a></h3>
+   <h3 class="heading settled" data-level="7.2" id="more-nrvo"><span class="secno">7.2. </span><span class="content">"Guarantee NRVO" in more cases</span><a class="self-link" href="#more-nrvo"></a></h3>
 <pre class="highlight"><c- k>class</c-> <c- nc>builder</c-> <c- p>{</c->
 <c- k>public</c-><c- o>:</c->
   <c- n>builder</c-><c- p>();</c->
@@ -2634,6 +2670,7 @@ Note that the same result can be achieved using <a href="#pin">§ 8.5 std::pin
    <div class="issue"> Following the proposed wording, it cannot be known at the time of initialization of the <a data-link-type="abstract-op" href="#abstract-opdef-return-variable">return variable</a>'s object, what object it is exactly ("Schrodinger’s object"). Later on, it is retrospectively established that we either have initialized and worked with a normal local variable, or with the result object of the function call expression. <a href="#issue-2dd63f8d"> ↵ </a></div>
    <div class="issue"> "<a data-link-type="abstract-op" href="#abstract-opdef-return-variable">Return variable</a>" might not be the best term for our purposes. <a href="#issue-9ca2bd58"> ↵ </a></div>
    <div class="issue"> The previous restriction in this case looks like not-a-defect. Should this change belong to a separate proposal? <a href="#issue-395f911b"> ↵ </a></div>
+   <div class="issue"> Should copy elision for non-class types belong to a separate proposal? <a href="#issue-6b2a45ae"> ↵ </a></div>
   </div>
   <aside class="dfn-panel" data-for="abstract-opdef-to-return-a-variable">
    <b><a href="#abstract-opdef-to-return-a-variable">#abstract-opdef-to-return-a-variable</a></b><b>Referenced in:</b>
