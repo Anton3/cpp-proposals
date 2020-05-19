@@ -512,17 +512,19 @@ The wording in this section is relative to WG21 draft [[!N4861]].
 Add new sections in <a href="http://eel.is/c++draft/class.copy.elision">[class.copy.elision]</a>:
 
 <blockquote>
-A `return` (<a href="http://eel.is/c++draft/stmt.return">[stmt.return]</a>) or `co_return` (<a href="http://eel.is/c++draft/stmt.return.coroutine">[stmt.return.coroutine]</a>) statement *R* <dfn dfn-type="abstract-op" lt="to return a variable">returns</dfn> a variable *V* if the operand of *R* is a (possibly parenthesized) *id-expression* designating *V* and *V* is declared in the body or *parameter-declaration-clause* of the innermost function or *lambda-expression* of *R*.
+A `return` (<a href="http://eel.is/c++draft/stmt.return">[stmt.return]</a>) or `co_return` (<a href="http://eel.is/c++draft/stmt.return.coroutine">[stmt.return.coroutine]</a>) statement *R* <dfn dfn-type="abstract-op" lt="to directly observe a variable">directly observes</dfn> a variable *V* if the potential scope (<a href="http://eel.is/c++draft/basic.scope">[basic.scope]</a>) of *V* includes *R* and *V* is declared in the body or *parameter-declaration-clause* of the innermost enclosing function or *lambda-expression* of *R*. If, additionally, the operand of *R* is a (possibly parenthesized) *id-expression* designating *V*, then *R* <dfn dfn-type="abstract-op" lt="to return a variable">returns</dfn> the variable *V*.
+</blockquote>
 
+<blockquote>
 A variable with automatic storage duration is called a <dfn dfn-type="abstract-op">potential return variable</dfn> when all of the following conditions are satisfied:
 
 - the variable is not a function parameter,
 
 - the type of the variable is an object type, is not `volatile`-qualified, and is the same (ignoring cv-qualification) as the return type of the immediately enclosing function or *lambda-expression*, and
 
-- at least one non-discarded (<a href="http://eel.is/c++draft/stmt.if">[stmt.if]</a>) `return` statement in the potential scope (<a href="http://eel.is/c++draft/basic.scope">[basic.scope]</a>) of the variable and in the same immediately enclosing function or *lambda-expression* as the variable declaration returns the variable. [ *Note:* The enclosing function cannot be a coroutine. — *end note* ]
+- at least one non-discarded (<a href="http://eel.is/c++draft/stmt.if">[stmt.if]</a>) `return` statement [$to return a variable|returns$] the variable. [ *Note:* The enclosing function cannot be a coroutine. — *end note* ]
 
-If additionally, all of the mentioned `return` statements [$to return a variable|return$] the variable, then the variable is called a <dfn dfn-type="abstract-op">return variable</dfn>. [ *Note:* A potential return variable shall have an eligible copy or move constructor (<a href="http://eel.is/c++draft/class.copy.ctor">[class.copy.ctor]</a>), unless it is a return variable. — *end note* ]
+If additionally, all non-discarded `return` statements, which [$to directly observe a variable|directly observe$] the variable, [$to return a variable|return$] it, then the variable is called a <dfn dfn-type="abstract-op">return variable</dfn>. [ *Note:* A potential return variable shall have an eligible copy or move constructor (<a href="http://eel.is/c++draft/class.copy.ctor">[class.copy.ctor]</a>), unless it is a return variable. — *end note* ]
 </blockquote>
 
 <blockquote class="note warning-note">
@@ -536,7 +538,7 @@ See also [[#req-change]], [[#non-class]]
 </blockquote>
 
 <blockquote class="issue">
-Too many new terms might have been introduced: [$to return a variable$], [$potential return variable$], [$return variable$].
+Too many new terms might have been introduced: [$to directly observe a variable$], [$to return a variable$], [$potential return variable$], [$return variable$].
 </blockquote>
 
 <blockquote class="issue">
@@ -560,10 +562,28 @@ Add new sections in <a href="http://eel.is/c++draft/class.copy.elision">[class.c
 
 <blockquote>
 A [$return variable$] occupies the same storage as the result object of the function call expression.
+</blockquote>
 
-If the scope of a [$return variable$] is exited in a way other than by executing a statement that [$to return a variable|returns$] the variable (or the destruction of a local variable is terminated by an exception), the return variable is considered a normal local variable that denotes an object of automatic storage duration. [ *Note:* In particular, on exit from the scope, the object is destroyed, among other objects of automatic storage duration, in the reverse order of construction (<a href="http://eel.is/c++draft/stmt.jump">[stmt.jump]</a>). If destruction of a local variable is terminated by an exception, the return variable can be destroyed out of normal order, as per <a href="http://eel.is/c++draft/except.ctor">[except.ctor]</a>. — *end note* ]
+<blockquote>
+If the scope of a [$return variable$] is exited by executing a statement that [$to return a variable|returns$] the variable (and the destruction of local variables is not terminated by an exception), then the variable denotes the result object of the function call expression. [ *Note:* If the [$return variable$] is of a trivially copyable type, then a temporary object can be introduced, with a subsequent copy or move (<a href="http://eel.is/c++draft/class.temporary">[class.temporary]</a>). In this case the variable shall denote the temporary. — *end note* ] The statement that returns the variable performs no copy-initialization (<a href="http://eel.is/c++draft/stmt.return">[stmt.return]</a>) and does not cause the destruction of the object (<a href="http://eel.is/c++draft/stmt.jump">[stmt.jump]</a>). Except for that, until the control is transferred out of the function, the variable shall be treated as a local variable with automatic storage duration, and `const` and `volatile` semantics (<a href="http://eel.is/c++draft/dcl.type.cv">[dcl.type.cv]</a>) applied to the object corresponding to the type of the return variable. [ *Example:*
 
-If the scope of a [$return variable$] is exited by executing a statement that [$to return a variable|returns$] the variable (and the destruction of local variables is not terminated by an exception), then the variable denotes the result object of the function call expression. The statement that returns the variable performs no copy-initialization (<a href="http://eel.is/c++draft/stmt.return">[stmt.return]</a>) and does not cause the destruction of the object (<a href="http://eel.is/c++draft/stmt.jump">[stmt.jump]</a>). Except for that, until the control is transferred out of the function, the variable shall be treated as a local variable with automatic storage duration, and `const` and `volatile` semantics (<a href="http://eel.is/c++draft/dcl.type.cv">[dcl.type.cv]</a>) applied to the object corresponding to the type of the return variable. The destructor for the object is potentially invoked (<a href="http://eel.is/c++draft/class.dtor">[class.dtor]</a>, <a href="http://eel.is/c++draft/except.ctor">[except.ctor]</a>). [ *Example:*
+<xmp>
+class A {
+  int x;
+  A() = default;
+  A(A&&) = delete;
+};
+
+A f() {
+  A a;       // "a" is a return variable
+  a.x = 5;   // OK, a has non-const semantics
+  return a;  // OK, no copy-initialization
+}
+
+const A b = f();  // "b" names the same object as "a"
+</xmp>
+
+— *end example* ] The destructor for the object is potentially invoked (<a href="http://eel.is/c++draft/class.dtor">[class.dtor]</a>, <a href="http://eel.is/c++draft/except.ctor">[except.ctor]</a>). [ *Example:*
 
 <xmp>
 class A {
@@ -576,9 +596,46 @@ A f() {
 </xmp>
 
 — *end example* ]
+</blockquote>
 
-[ *Note:* If the [$return variable$] is of a trivially copyable type, then a temporary object can be introduced, with a subsequent copy or move (<a href="http://eel.is/c++draft/class.temporary">[class.temporary]</a>). In this case the variable shall denote the temporary. — *end note* ]
+<blockquote>
+If the scope of a [$return variable$] is exited in a way other than by executing a statement that [$to return a variable|returns$] the variable (or the destruction of a local variable is terminated by an exception), the return variable is considered a normal local variable that denotes an object of automatic storage duration. [ *Note:* In particular, on exit from the scope, the object is destroyed, among other objects of automatic storage duration, in the reverse order of construction (<a href="http://eel.is/c++draft/stmt.jump">[stmt.jump]</a>). If destruction of a local variable is terminated by an exception, the return variable can be destroyed out of normal order, as per <a href="http://eel.is/c++draft/except.ctor">[except.ctor]</a>. — *end note* ] [ *Example:*
 
+<xmp>
+struct A {
+  A() = default;
+  A(A&&) { }
+};
+
+struct B { ~B() { throw 0; } };
+
+A f() {
+  std::intptr_t p = 0;
+
+  try {
+    A a;
+    Y y;
+    A b;
+    A c;  // #1
+    A d;
+    p = std::bit_cast<std::intptr_t>(&c);
+    return c;  // #2
+  } catch (...) {
+    A e;  // #3
+    if (p == std::bit_cast<std::intptr_t>(&e)) {  // #4
+      throw 1;
+    }
+    return e;
+  }
+}
+</xmp>
+
+At #1, the [$return variable$] `c` is constructed in the storage for the result object of the function call expression. The local variable `c` is not the result object, because the control will exit the scope of `c` by an exception. At #2, the local variable `d` is destroyed, then the local variable `b` is destroyed. Next, the local variable `y` is destroyed, causing stack unwinding, resulting in the destruction of the local variable `c`, followed by the destruction of the local variable `a`. At #3, the [$return variable$] `e` is constructed in the storage for the result object of the function call expression. The local variable `e` is not the result object as well, because the control will exit the scope of `e` by an exception. At #4, the address previously taken by `c` compares equal to the address of `e`. The function call terminates with an exception.
+
+— *end example* ]
+</blockquote>
+
+<blockquote>
 Until the control is transferred out of the function, if the value of the object of the [$return variable$] or any of its subobjects is accessed through a glvalue that is not obtained, directly or indirectly, from the variable, the value of the object or subobject thus obtained is unspecified.
 </blockquote>
 
