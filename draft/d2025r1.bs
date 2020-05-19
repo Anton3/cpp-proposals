@@ -490,7 +490,7 @@ The wording in this section is relative to WG21 draft [[!N4861]].
 Add new sections in <a href="http://eel.is/c++draft/class.copy.elision">[class.copy.elision]</a>:
 
 <blockquote>
-It is said that a `return` statement <dfn dfn-type="abstract-op" lt="to return a variable">returns</dfn> a variable when its operand is a (possibly parenthesized) *id-expression*, for which the name lookup (<a href="http://eel.is/c++draft/basic.lookup">[basic.lookup]</a>) finds the variable, unless the variable is captured by a *lambda-expression* enclosing the `return` statement.
+A `return` statement *R* <dfn dfn-type="abstract-op" lt="to return a variable">returns</dfn> a variable *V* if the operand of *R* is a (possibly parenthesized) *id-expression* designating *V* and *V* is not captured by a *lambda-expression* enclosing *R*.
 
 A variable with automatic storage duration is called a <dfn dfn-type="abstract-op">potential return variable</dfn> when all of the following conditions are satisfied:
 
@@ -498,7 +498,7 @@ A variable with automatic storage duration is called a <dfn dfn-type="abstract-o
 
 - the type of the variable is an object type, is not `volatile`-qualified, and is the same (ignoring cv-qualification) as the return type of the immediately enclosing function or *lambda-expression*, and
 
-- at least one non-discarded (<a href="http://eel.is/c++draft/stmt.if">[stmt.if]</a>) `return` statement in its potential scope (<a href="http://eel.is/c++draft/basic.scope">[basic.scope]</a>) and in the same immediately enclosing function or *lambda-expression* as the variable declaration returns the variable. [ *Note:* The enclosing function cannot be a coroutine. — *end note* ]
+- at least one non-discarded (<a href="http://eel.is/c++draft/stmt.if">[stmt.if]</a>) `return` statement in the potential scope (<a href="http://eel.is/c++draft/basic.scope">[basic.scope]</a>) of the variable and in the same immediately enclosing function or *lambda-expression* as the variable declaration returns the variable. [ *Note:* The enclosing function cannot be a coroutine. — *end note* ]
 
 If additionally, all of the mentioned `return` statements [$to return a variable|return$] the variable, then the variable is called a <dfn dfn-type="abstract-op">return variable</dfn>. [ *Note:* A potential return variable shall have an eligible copy or move constructor (<a href="http://eel.is/c++draft/class.copy.ctor">[class.copy.ctor]</a>), unless it is a return variable. — *end note* ]
 </blockquote>
@@ -526,9 +526,11 @@ Should we say "function or *lambda-expression*", or is it enough to say "functio
 Add new sections in <a href="http://eel.is/c++draft/class.copy.elision">[class.copy.elision]</a>:
 
 <blockquote>
-If the potential scope of a [$return variable$] is exited in a way other than by executing a statement that [$to return a variable|returns$] it (or the destruction of a local variable is terminated by an exception), the return variable is considered a normal local variable that denotes an object of automatic storage duration. [ *Note:* In particular, on exit from the scope, the object is destroyed, among other objects of automatic storage duration, in the reverse order of construction (<a href="http://eel.is/c++draft/stmt.jump">[stmt.jump]</a>). If destruction of a local variable is terminated by an exception, the return variable can be destroyed out of normal order, as per <a href="http://eel.is/c++draft/except.ctor">[except.ctor]</a>. — *end note* ]
+A [$return variable$] occupies the same storage as the result object of the function call expression.
 
-If the potential scope of a [$return variable$] is exited by executing a statement that [$to return a variable|returns$] it (and the destruction of local variables is not terminated by an exception), then the variable denotes the result object of the function call expression. The statement that returns the variable performs no copy-initialization (<a href="http://eel.is/c++draft/stmt.return">[stmt.return]</a>) and does not cause the destruction of the object (<a href="http://eel.is/c++draft/stmt.jump">[stmt.jump]</a>). Except for that, until the control is transferred out of the function, the variable shall be treated as a local variable with automatic storage duration, and `const` and `volatile` semantics (<a href="http://eel.is/c++draft/dcl.type.cv">[dcl.type.cv]</a>) applied to the object correspond to the type of the return variable. The destructor for the object is potentially invoked (<a href="http://eel.is/c++draft/class.dtor">[class.dtor]</a>, <a href="http://eel.is/c++draft/except.ctor">[except.ctor]</a>). [ *Example:*
+If the scope of a [$return variable$] is exited in a way other than by executing a statement that [$to return a variable|returns$] the variable (or the destruction of a local variable is terminated by an exception), the return variable is considered a normal local variable that denotes an object of automatic storage duration. [ *Note:* In particular, on exit from the scope, the object is destroyed, among other objects of automatic storage duration, in the reverse order of construction (<a href="http://eel.is/c++draft/stmt.jump">[stmt.jump]</a>). If destruction of a local variable is terminated by an exception, the return variable can be destroyed out of normal order, as per <a href="http://eel.is/c++draft/except.ctor">[except.ctor]</a>. — *end note* ]
+
+If the scope of a [$return variable$] is exited by executing a statement that [$to return a variable|returns$] the variable (and the destruction of local variables is not terminated by an exception), then the variable denotes the result object of the function call expression. The statement that returns the variable performs no copy-initialization (<a href="http://eel.is/c++draft/stmt.return">[stmt.return]</a>) and does not cause the destruction of the object (<a href="http://eel.is/c++draft/stmt.jump">[stmt.jump]</a>). Except for that, until the control is transferred out of the function, the variable shall be treated as a local variable with automatic storage duration, and `const` and `volatile` semantics (<a href="http://eel.is/c++draft/dcl.type.cv">[dcl.type.cv]</a>) applied to the object corresponding to the type of the return variable. The destructor for the object is potentially invoked (<a href="http://eel.is/c++draft/class.dtor">[class.dtor]</a>, <a href="http://eel.is/c++draft/except.ctor">[except.ctor]</a>). [ *Example:*
 
 <xmp>
 class A {
@@ -564,7 +566,12 @@ Following the proposed wording, it cannot be known at the time of initialization
 Modify <a href="http://eel.is/c++draft/class.copy.elision#1">[class.copy.elision]/1</a>:
 
 <blockquote>
-<del>in a `return` statement in a function with a class return type, when the *expression* is the name of a non-volatile object with automatic storage duration (other than a function parameter or a variable introduced by the *exception-declaration* of a *handler* (<a href="http://eel.is/c++draft/except.handle">[except.handle]</a>)) with the same type (ignoring cv-qualification) as the function return type, the copy/move operation can be omitted by constructing the object directly into the function call's return object</del> <ins>the implementation can treat a [$potential return variable$] as a [$return variable$]</ins>
+[…] This elision of copy/move operations, called *copy elision*, is permitted in the following circumstances (which may be combined to eliminate multiple copies):
+
+- <del>in a `return` statement in a function with a class return type, when the *expression* is the name of a non-volatile object with automatic storage duration (other than a function parameter or a variable introduced by the *exception-declaration* of a *handler* (<a href="http://eel.is/c++draft/except.handle">[except.handle]</a>)) with the same type (ignoring cv-qualification) as the function return type, the copy/move operation can be omitted by constructing the object directly into the function call's return object</del> <ins>the implementation can treat a [$potential return variable$] as a [$return variable$]</ins>
+
+- in a *throw-expression* […]
+
 </blockquote>
 
 ## Cross-references ## {#wording-refs}
@@ -604,6 +611,11 @@ Modify <a href="http://eel.is/c++draft/class.temporary#3">[class.temporary]/3</a
 
 <blockquote>
 When an object of class type `X` is passed to or returned from a function, if `X` has at least one eligible copy or move constructor ([special]), each such constructor is trivial, and the destructor of `X` is either trivial or deleted, implementations are permitted to create a temporary object to hold the function parameter or result object. The temporary object is constructed from the function argument or return value, respectively, and the function's parameter or return object is initialized as if by using the eligible trivial constructor to copy the temporary (even if that constructor is inaccessible or would not be selected by overload resolution to perform a copy or move of the object). <ins>Similarly, when an object of a non-class type is passed to or returned from a function, implementations are permitted to create a temporary object.</ins> [ *Note:* This latitude is granted to allow objects of class type to be passed to or returned from functions in registers. *— end note* ]
+</blockquote>
+
+<blockquote class="note warning-note">
+Note:
+CWG2434 (<a href="https://raw.githack.com/zygoloid/wg21papers/master/to-review/cwg2434.html">alt. link</a>) proposes essentially the same change. The wording might be more precise over there.
 </blockquote>
 
 Add a new section after <a href="http://eel.is/c++draft/expr.context#2">[expr.context]/2</a>:
