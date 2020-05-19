@@ -490,7 +490,7 @@ The wording in this section is relative to WG21 draft [[!N4861]].
 Add new sections in <a href="http://eel.is/c++draft/class.copy.elision">[class.copy.elision]</a>:
 
 <blockquote>
-A `return` statement *R* <dfn dfn-type="abstract-op" lt="to return a variable">returns</dfn> a variable *V* if the operand of *R* is a (possibly parenthesized) *id-expression* designating *V* and *V* is not captured by a *lambda-expression* enclosing *R*.
+A `return` (<a href="http://eel.is/c++draft/stmt.return">[stmt.return]</a>) or `co_return` (<a href="http://eel.is/c++draft/stmt.return.coroutine">[stmt.return.coroutine]</a>) statement *R* <dfn dfn-type="abstract-op" lt="to return a variable">returns</dfn> a variable *V* if the operand of *R* is a (possibly parenthesized) *id-expression* designating *V* and *V* is declared in the body or *parameter-declaration-clause* of the innermost function or *lambda-expression* of *R*.
 
 A variable with automatic storage duration is called a <dfn dfn-type="abstract-op">potential return variable</dfn> when all of the following conditions are satisfied:
 
@@ -510,7 +510,7 @@ The definition avoids mentioning the object a [$return variable$] names prematur
 
 <blockquote class="note warning-note">
 Note:
-See also [[#req-change]], [[#trivial-temporaries]]
+See also [[#req-change]], [[#non-class]]
 </blockquote>
 
 <blockquote class="issue">
@@ -521,7 +521,18 @@ Too many new terms might have been introduced: [$to return a variable$], [$poten
 Should we say "function or *lambda-expression*", or is it enough to say "function"?
 </blockquote>
 
-## The behavior of [$return variable|return variables$] ## {#wording-behavior}
+Modify <a href="http://eel.is/c++draft/class.copy.elision#3">[class.copy.elision]/3</a>:
+
+<blockquote>
+[…] In the following copy-initialization contexts, a move operation might be used instead of a copy operation:
+
+- <del>If the expression in a `return` ([stmt.return]) or `co_­return` ([stmt.return.coroutine]) statement is a (possibly parenthesized) *id-expression* that names an implicitly movable entity declared in the body or *parameter-declaration-clause* of the innermost enclosing function or *lambda-expression*</del> <ins>if a statement returns an implicitly movable entity</ins>, or
+
+- if the operand of a *throw-expression* […]
+
+</blockquote>
+
+## The behavior of return variables ## {#wording-behavior}
 
 Add new sections in <a href="http://eel.is/c++draft/class.copy.elision">[class.copy.elision]</a>:
 
@@ -556,7 +567,7 @@ The object of a [$return variable$] is analogous to an object under construction
 
 <blockquote class="note warning-note">
 Note:
-See also [[#invalidation]]
+See also [[#trivial-temporaries]], [[#invalidation]]
 </blockquote>
 
 <blockquote class="issue">
