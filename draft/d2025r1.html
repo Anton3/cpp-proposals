@@ -2052,7 +2052,7 @@ See also <a href="#req-change">§ 6.2 Have requirements for copy elision chang
   <c- n>A</c-><c- p>(</c-><c- n>A</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- p>{</c-> <c- p>}</c->
 <c- p>};</c->
 
-<c- k>struct</c-> <c- n>B</c-> <c- p>{</c-> <c- o>~</c-><c- n>B</c-><c- p>()</c-> <c- p>{</c-> <c- k>throw</c-> <c- mi>0</c-><c- p>;</c-> <c- p>}</c-> <c- p>};</c->
+<c- k>struct</c-> <c- n>B</c-> <c- p>{</c-> <c- o>~</c-><c- n>B</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>(</c->false<c- p>)</c-> <c- p>{</c-> <c- k>throw</c-> <c- mi>0</c-><c- p>;</c-> <c- p>}</c-> <c- p>};</c->
 
 <c- n>A</c-> <c- nf>f</c-><c- p>()</c-> <c- p>{</c->
   <c- n>std</c-><c- o>::</c-><c- b>intptr_t</c-> <c- n>p</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c->

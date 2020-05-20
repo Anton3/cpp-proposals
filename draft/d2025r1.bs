@@ -607,7 +607,7 @@ struct A {
   A(A&&) { }
 };
 
-struct B { ~B() { throw 0; } };
+struct B { ~B() noexcept(false) { throw 0; } };
 
 A f() {
   std::intptr_t p = 0;
