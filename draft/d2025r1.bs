@@ -607,14 +607,14 @@ struct A {
   A(A&&) { }
 };
 
-struct B { ~B() noexcept(false) { throw 0; } };
+struct X { ~X() noexcept(false) { throw 0; } };
 
 A f() {
   std::intptr_t p = 0;
 
   try {
     A a;
-    Y y;
+    X x;
     A b;
     A c;  // #1
     A d;
@@ -630,7 +630,7 @@ A f() {
 }
 </xmp>
 
-At #1, the [$return variable$] `c` is constructed in the storage for the result object of the function call expression. The local variable `c` does not denote the result object, because the control will exit the scope of `c` by the means of an exception. At #2, the local variable `d` is destroyed, then the local variable `b` is destroyed. Next, the local variable `y` is destroyed, causing stack unwinding, resulting in the destruction of the local variable `c`, followed by the destruction of the local variable `a`. At #3, the [$return variable$] `e` is constructed in the storage for the result object of the function call expression. The local variable `e` does not denote the result object as well, because the control will exit the scope of `e` by the means of an exception. At #4, the address previously taken of `c` compares equal to the address of `e`. The function call is terminated by an exception.
+At #1, the [$return variable$] `c` is constructed in the storage for the result object of the function call expression. The local variable `c` does not denote the result object, because the control will exit the scope of `c` by the means of an exception. At #2, the local variable `d` is destroyed, then the local variable `b` is destroyed. Next, the local variable `x` is destroyed, causing stack unwinding, resulting in the destruction of the local variable `c`, followed by the destruction of the local variable `a`. At #3, the [$return variable$] `e` is constructed in the storage for the result object of the function call expression. The local variable `e` does not denote the result object as well, because the control will exit the scope of `e` by the means of an exception. At #4, the address previously taken of `c` compares equal to the address of `e`. The function call is terminated by an exception.
 
 — *end example* ]
 </blockquote>
