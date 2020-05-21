@@ -2330,7 +2330,7 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
 
 <c- c1>// correct order of destruction: mx</c->
 <c- n>X</c-> <c- nf>test1</c-><c- p>()</c-> <c- p>{</c->
-  <c- n>X</c-> <c- n>m</c-><c- p>(</c-><c- sc>'m'</c-><c- p>);</c->
+  <c- n>X</c-> <c- n>m</c-><c- p>(</c-><c- sc>'m'</c-><c- p>,</c-> true<c- p>);</c->
   <c- k>return</c-> <c- n>X</c-><c- p>(</c-><c- sc>'a'</c-><c- p>);</c->
 <c- p>}</c->
 
