@@ -992,7 +992,7 @@ struct X {
   }
 };
 
-// correct order of destruction: mx
+// correct order of destruction: ma
 X test1() {
   X m('m', true);
   return X('a');
