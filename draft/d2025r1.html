@@ -2298,62 +2298,89 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
 </pre>
    <p>Accounting for such cases will lead to pessimizations for some implementations.</p>
    <h3 class="heading settled" data-level="6.6" id="implementation-exceptions"><span class="secno">6.6. </span><span class="content">Implementing the proposal: how to deal with exceptions?</span><a class="self-link" href="#implementation-exceptions"></a></h3>
-   <p>If the <code class="highlight"><c- k>return</c-> <c- n>rv</c-><c- p>;</c-></code> statement is executed, but the destruction of a local variable throws, we may need to destroy the return variable. Some popular compilers, such as GCC and Clang, leak in such cases (as of the time of writing) when they choose to perform copy elision. Examples:</p>
+   <p>If the <code class="highlight"><c- k>return</c-> <c- n>rv</c-><c- p>;</c-></code> statement is executed, but the destruction of a local variable throws, we may need to destroy the return variable. Some popular compilers, such as GCC and Clang, fail to call the return object’s destructor in such cases (as of the time of writing) when they choose to perform copy elision:</p>
+   <ul>
+    <li data-md>
+     <p><a href="https://bugs.llvm.org/show_bug.cgi?id=12286">This bug</a> was filed against Clang in 2012 and still is open</p>
+    <li data-md>
+     <p><a href="https://gcc.gnu.org/bugzilla/show_bug.cgi?id=33799">This bug</a> was filed against GCC in 2007 and still is open</p>
+   </ul>
+   <p>Here are some tests that we have to keep in mind when implementing the proposal:</p>
 <pre class="highlight"><c- cp>#include</c-> &lt;cstdio>
 
-<c- k>struct</c-> <c- n>maybe_ex</c-> <c- p>{</c->
-  <c- k>const</c-> <c- b>char</c-><c- o>*</c-> <c- n>s</c-><c- p>;</c->
-  <c- b>bool</c-> <c- n>ex</c-><c- p>;</c->
-  <c- n>maybe_ex</c-><c- p>(</c-><c- k>const</c-> <c- b>char</c-><c- o>*</c-> <c- n>s</c-><c- p>,</c-> <c- b>bool</c-> <c- n>ex</c-><c- p>)</c-> <c- o>:</c-> <c- n>s</c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>ex</c-><c- p>(</c-><c- n>ex</c-><c- p>)</c-> <c- p>{}</c->
-  <c- o>~</c-><c- n>maybe_ex</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>(</c->false<c- p>)</c-> <c- p>{</c-> <c- n>puts</c-><c- p>(</c-><c- n>s</c-><c- p>);</c-> <c- k>if</c-> <c- p>(</c-><c- n>ex</c-><c- p>)</c-> <c- k>throw</c-> <c- mi>0</c-><c- p>;</c-> <c- p>}</c->
+<c- k>struct</c-> <c- n>X</c-> <c- p>{</c->
+  <c- b>char</c-> <c- n>s</c-><c- p>;</c->
+  <c- b>bool</c-> <c- k>throws</c-><c- p>;</c->
+
+  <c- o>~</c-><c- n>X</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>(</c->false<c- p>)</c-> <c- p>{</c->
+    <c- n>printf</c-><c- p>(</c-><c- s>"~%c</c-><c- se>\n</c-><c- s>"</c-><c- p>,</c-> <c- n>s</c-><c- p>);</c->
+    <c- k>if</c-> <c- p>(</c-><c- k>throws</c-><c- p>)</c-> <c- k>throw</c-> <c- mi>0</c-><c- p>;</c->
+  <c- p>}</c->
+
+  <c- n>X</c-><c- p>(</c-><c- n>X</c-><c- o>&amp;&amp;</c-> <c- n>o</c-><c- p>)</c-> <c- o>:</c-> <c- n>s</c-><c- p>(</c-><c- n>o</c-><c- p>.</c-><c- n>s</c-><c- p>),</c-> <c- k>throws</c-><c- p>(</c-><c- n>o</c-><c- p>.</c-><c- k>throws</c-><c- p>)</c-> <c- p>{</c->
+    <c- n>printf</c-><c- p>(</c-><c- s>"%c (copy)</c-><c- se>\n</c-><c- s>"</c-><c- p>,</c-> <c- n>s</c-><c- p>);</c->
+  <c- p>}</c->
+
+  <c- k>explicit</c-> <c- n>X</c-><c- p>(</c-><c- b>char</c-> <c- n>s</c-><c- p>,</c-> <c- b>bool</c-> <c- k>throws</c-> <c- o>=</c-> false<c- p>)</c-> 
+    <c- o>:</c-> <c- n>s</c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- k>throws</c-><c- p>(</c-><c- k>throws</c-><c- p>)</c->
+  <c- p>{</c->
+    <c- n>printf</c-><c- p>(</c-><c- s>"%c</c-><c- se>\n</c-><c- s>"</c-><c- p>,</c-> <c- n>s</c-><c- p>);</c->
+  <c- p>}</c->
 <c- p>};</c->
 
-<c- k>struct</c-> <c- n>widget</c-> <c- p>{</c->
-  <c- k>const</c-> <c- b>char</c-><c- o>*</c-> <c- n>s</c-><c- p>;</c->
-  <c- n>widget</c-><c- p>(</c-><c- k>const</c-> <c- b>char</c-><c- o>*</c-> <c- n>s</c-><c- p>)</c-> <c- o>:</c-> <c- n>s</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-> <c- p>{}</c->
-  <c- n>widget</c-><c- p>(</c-><c- n>widget</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- p>{}</c->
-  <c- o>~</c-><c- n>widget</c-><c- p>()</c-> <c- p>{</c-> <c- n>puts</c-><c- p>(</c-><c- n>s</c-><c- p>);</c-> <c- p>}</c->
-<c- p>};</c->
+<c- c1>// correct order of destruction: mx</c->
+<c- n>X</c-> <c- nf>test1</c-><c- p>()</c-> <c- p>{</c->
+  <c- n>X</c-> <c- n>m</c-><c- p>(</c-><c- sc>'m'</c-><c- p>);</c->
+  <c- k>return</c-> <c- n>X</c-><c- p>(</c-><c- sc>'a'</c-><c- p>);</c->
+<c- p>}</c->
 
-<c- c1>// correct output: dbmca</c->
-<c- n>widget</c-> <c- nf>test1</c-><c- p>()</c-> <c- p>{</c->
-  <c- n>widget</c-> <c- n>a</c-><c- p>(</c-><c- s>"a"</c-><c- p>);</c->
-  <c- n>maybe_ex</c-> <c- n>m</c-><c- p>(</c-><c- s>"m"</c-><c- p>,</c-> true<c- p>);</c->
-  <c- n>widget</c-> <c- n>b</c-><c- p>(</c-><c- s>"b"</c-><c- p>);</c->
-  <c- n>widget</c-> <c- n>c</c-><c- p>(</c-><c- s>"c"</c-><c- p>);</c->
-  <c- n>widget</c-> <c- n>d</c-><c- p>(</c-><c- s>"d"</c-><c- p>);</c->
+<c- c1>// correct order of destruction: dbmca</c->
+<c- n>X</c-> <c- nf>test2</c-><c- p>()</c-> <c- p>{</c->
+  <c- n>X</c-> <c- n>a</c-><c- p>(</c-><c- sc>'a'</c-><c- p>);</c->
+  <c- n>X</c-> <c- n>m</c-><c- p>(</c-><c- sc>'m'</c-><c- p>,</c-> true<c- p>);</c->
+  <c- n>X</c-> <c- n>b</c-><c- p>(</c-><c- sc>'b'</c-><c- p>);</c->
+  <c- n>X</c-> <c- n>c</c-><c- p>(</c-><c- sc>'c'</c-><c- p>);</c->
+  <c- n>X</c-> <c- n>d</c-><c- p>(</c-><c- sc>'d'</c-><c- p>);</c->
   <c- k>return</c-> <c- n>c</c-><c- p>;</c->
 <c- p>}</c->
 
-<c- c1>// correct output: mab</c->
-<c- n>widget</c-> <c- nf>test2</c-><c- p>()</c-> <c- p>{</c->
-  <c- n>widget</c-> <c- n>a</c-><c- p>(</c-><c- s>"a"</c-><c- p>);</c->
-  <c- n>widget</c-> <c- n>b</c-><c- p>(</c-><c- s>"b"</c-><c- p>);</c->
+<c- c1>// correct order of destruction: mab</c->
+<c- n>X</c-> <c- nf>test3</c-><c- p>()</c-> <c- p>{</c->
+  <c- n>X</c-> <c- n>a</c-><c- p>(</c-><c- sc>'a'</c-><c- p>);</c->
+  <c- n>X</c-> <c- n>b</c-><c- p>(</c-><c- sc>'b'</c-><c- p>);</c->
   <c- k>try</c-> <c- p>{</c->
-    <c- n>maybe_ex</c-> <c- n>m</c-><c- p>(</c-><c- s>"m"</c-><c- p>,</c-> true<c- p>);</c->
+    <c- n>X</c-> <c- n>m</c-><c- p>(</c-><c- sc>'m'</c-><c- p>,</c-> true<c- p>);</c->
     <c- k>return</c-> <c- n>b</c-><c- p>;</c->
   <c- p>}</c-> <c- k>catch</c-> <c- p>(...)</c-> <c- p>{</c-> <c- p>}</c->
   <c- k>return</c-> <c- n>b</c-><c- p>;</c->
 <c- p>}</c->
 
-<c- c1>// correct output if cond:  mbad</c->
-<c- c1>// correct output if !cond: bmcad</c->
-<c- n>widget</c-> <c- nf>test3</c-><c- p>(</c-><c- b>bool</c-> <c- n>cond</c-><c- p>)</c-> <c- p>{</c->
-  <c- n>widget</c-> <c- n>a</c-><c- p>(</c-><c- s>"a"</c-><c- p>);</c->
+<c- c1>// correct order of destruction if cond:  mbad</c->
+<c- c1>// correct order of destruction if !cond: bmcad</c->
+<c- n>X</c-> <c- nf>test4</c-><c- p>(</c-><c- b>bool</c-> <c- n>cond</c-><c- p>)</c-> <c- p>{</c->
+  <c- n>X</c-> <c- n>a</c-><c- p>(</c-><c- sc>'a'</c-><c- p>);</c->
   <c- k>try</c-> <c- p>{</c->
-    <c- n>maybe_ex</c-> <c- n>m</c-><c- p>(</c-><c- s>"m"</c-><c- p>,</c-> true<c- p>);</c->
+    <c- n>X</c-> <c- n>m</c-><c- p>(</c-><c- sc>'m'</c-><c- p>,</c-> true<c- p>);</c->
     <c- p>{</c->
-      <c- n>widget</c-> <c- n>b</c-><c- p>(</c-><c- s>"b"</c-><c- p>);</c->
+      <c- n>X</c-> <c- n>b</c-><c- p>(</c-><c- sc>'b'</c-><c- p>);</c->
       <c- k>if</c-> <c- p>(</c-><c- n>cond</c-><c- p>)</c-> <c- p>{</c->
         <c- k>return</c-> <c- n>b</c-><c- p>;</c->
       <c- p>}</c->
     <c- p>}</c->
     <c- p>{</c->
-      <c- n>widget</c-> <c- n>c</c-><c- p>(</c-><c- s>"c"</c-><c- p>);</c->
+      <c- n>X</c-> <c- n>c</c-><c- p>(</c-><c- sc>'c'</c-><c- p>);</c->
       <c- k>return</c-> <c- n>c</c-><c- p>;</c->
     <c- p>}</c->
   <c- p>}</c-> <c- k>catch</c-> <c- p>(...)</c-> <c- p>{</c-> <c- p>}</c->
-  <c- k>return</c-> <c- n>widget</c-><c- p>(</c-><c- s>"d"</c-><c- p>);</c->
+  <c- k>return</c-> <c- n>X</c-><c- p>(</c-><c- sc>'d'</c-><c- p>);</c->
+<c- p>}</c->
+
+<c- b>int</c-> <c- nf>main</c-><c- p>()</c-> <c- p>{</c->
+  <c- k>try</c-> <c- p>{</c-> <c- n>test1</c-><c- p>();</c-> <c- p>}</c-> <c- k>catch</c-><c- p>(...)</c-> <c- p>{}</c-> <c- n>puts</c-><c- p>(</c-><c- s>""</c-><c- p>);</c->
+  <c- k>try</c-> <c- p>{</c-> <c- n>test2</c-><c- p>();</c-> <c- p>}</c-> <c- k>catch</c-><c- p>(...)</c-> <c- p>{}</c-> <c- n>puts</c-><c- p>(</c-><c- s>""</c-><c- p>);</c->
+  <c- n>test3</c-><c- p>();</c-> <c- n>puts</c-><c- p>(</c-><c- s>""</c-><c- p>);</c->
+  <c- n>test4</c-><c- p>(</c->true<c- p>);</c-> <c- n>puts</c-><c- p>(</c-><c- s>""</c-><c- p>);</c->
+  <c- n>test4</c-><c- p>(</c->false<c- p>);</c-> <c- n>puts</c-><c- p>(</c-><c- s>""</c-><c- p>);</c->
 <c- p>}</c->
 </pre>
    <p>All possible "exceptional" cases can be grouped into two categories:</p>
