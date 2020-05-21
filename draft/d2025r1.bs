@@ -1081,7 +1081,7 @@ widget test() {
 
 If the implementation treats `b` as a return variable, then the destruction shall occur in the order "dcba". (Because `b` does not end up being returned, is shall be treated like a normal local variable.) But that means `b` is destroyed after `d` is constructed, which is not possible. To perform copy elision in this case, the implementation must prove that the destruction of `b` can be moved right before the construction of `d` (and before the destruction of `c`!) under the "as-if" rule.
 
-This only seems feasible in case no non-trivially-destructible variables are declared between the potential return variable `b` and the `return` statement that does not return `b`, and if the operand of the `return` statement is "pure" and does not mention `b`. These limiting conditions are satisfied in the following common case:
+This only seems feasible in case no non-trivially-destructible variables are declared between the potential return variable `b` and the `return` statement that does not return `b`, and if the operand of the `return` statement is "sufficiently pure". These limiting conditions are satisfied in the following common case:
 
 <xmp>
 std::vector<int> test() {
