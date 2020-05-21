@@ -964,8 +964,8 @@ Accounting for such cases will lead to pessimizations for some implementations.
 
 If the `return rv;` statement is executed, but the destruction of a local variable throws, we may need to destroy the return variable. Some popular compilers, such as GCC and Clang, fail to call the destructor for the return variable in such cases (as of the time of writing) when they choose to perform copy elision:
 
-- <a href="https://bugs.llvm.org/show_bug.cgi?id=12286">This bug</a> was filed against Clang in 2012 and still is open
-- <a href="https://gcc.gnu.org/bugzilla/show_bug.cgi?id=33799">This bug</a> was filed against GCC in 2007 and still is open
+- <a href="https://bugs.llvm.org/show_bug.cgi?id=12286">This bug report</a> was filed against Clang in 2012 and still is open
+- <a href="https://gcc.gnu.org/bugzilla/show_bug.cgi?id=33799">This bug report</a> was filed against GCC in 2007 and still is open
 
 Here are some tests that we have to keep in mind when implementing the proposal:
 
