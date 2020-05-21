@@ -1678,8 +1678,10 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
        <ol class="toc">
         <li><a href="#escape-analysis"><span class="secno">6.5.1</span> <span class="content">Complication of escape analysis</span></a>
        </ol>
-      <li><a href="#abi"><span class="secno">6.6</span> <span class="content">Are the proposed changes source or ABI breaking?</span></a>
-      <li><a href="#costs"><span class="secno">6.7</span> <span class="content">What are the costs associated with the proposed changes?</span></a>
+      <li><a href="#implementation-exceptions"><span class="secno">6.6</span> <span class="content">Implementing the proposal: how to deal with exceptions?</span></a>
+      <li><a href="#potential-elision"><span class="secno">6.7</span> <span class="content">When is copy elision for potential return variables feasible?</span></a>
+      <li><a href="#abi"><span class="secno">6.8</span> <span class="content">Are the proposed changes source or ABI breaking?</span></a>
+      <li><a href="#costs"><span class="secno">6.9</span> <span class="content">What are the costs associated with the proposed changes?</span></a>
      </ol>
     <li>
      <a href="#alternatives"><span class="secno">7</span> <span class="content">Alternative solutions</span></a>
@@ -1759,6 +1761,10 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
      <p>Added <a href="#optional-mark">§ 8.6 Add an optional mark [[nrvo_verify]]</a> subsection</p>
     <li data-md>
      <p>Added <a href="#complex-expressions">§ 8.7 Allow copy elision for complex expressions</a> subsection</p>
+    <li data-md>
+     <p>Added <a href="#implementation-exceptions">§ 6.6 Implementing the proposal: how to deal with exceptions?</a> subsection</p>
+    <li data-md>
+     <p>Added <a href="#potential-elision">§ 6.7 When is copy elision for potential return variables feasible?</a> subsection</p>
    </ul>
    <h2 class="heading settled" data-level="2" id="introduction"><span class="secno">2. </span><span class="content">Introduction</span><a class="self-link" href="#introduction"></a></h2>
    <p>When a function cannot carry its result in registers, implementations add a hidden parameter containing the address of the caller-owned <em>return slot</em> (which is usually an object in the C++ sense). When the function decides to return, the result of the function is stored there. For example, in C++14, 2 copies could be performed for both <code class="highlight"><c- n>foo</c-></code> and <code class="highlight"><c- n>bar</c-></code> (assuming <code class="highlight"><c- n>widget</c-></code> is not trivially copyable):</p>
@@ -2302,12 +2308,149 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
 <c- p>}</c->
 </pre>
    <p>Accounting for such cases will lead to pessimizations for some implementations.</p>
-   <h3 class="heading settled" data-level="6.6" id="abi"><span class="secno">6.6. </span><span class="content">Are the proposed changes source or ABI breaking?</span><a class="self-link" href="#abi"></a></h3>
+   <h3 class="heading settled" data-level="6.6" id="implementation-exceptions"><span class="secno">6.6. </span><span class="content">Implementing the proposal: how to deal with exceptions?</span><a class="self-link" href="#implementation-exceptions"></a></h3>
+   <p>If the <code class="highlight"><c- k>return</c-> <c- n>rv</c-><c- p>;</c-></code> statement is executed, but the destruction of a local variable throws, we may need to destroy the return variable. Some popular compilers, such as GCC and Clang, leak in such cases (as of the time of writing) when they choose to perform copy elision. Examples:</p>
+<pre class="highlight"><c- cp>#include</c-> &lt;cstdio>
+
+<c- k>struct</c-> <c- n>maybe_ex</c-> <c- p>{</c->
+  <c- k>const</c-> <c- b>char</c-><c- o>*</c-> <c- n>s</c-><c- p>;</c->
+  <c- b>bool</c-> <c- n>ex</c-><c- p>;</c->
+  <c- n>maybe_ex</c-><c- p>(</c-><c- k>const</c-> <c- b>char</c-><c- o>*</c-> <c- n>s</c-><c- p>,</c-> <c- b>bool</c-> <c- n>ex</c-><c- p>)</c-> <c- o>:</c-> <c- n>s</c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>ex</c-><c- p>(</c-><c- n>ex</c-><c- p>)</c-> <c- p>{}</c->
+  <c- o>~</c-><c- n>maybe_ex</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>(</c->false<c- p>)</c-> <c- p>{</c-> <c- n>puts</c-><c- p>(</c-><c- n>s</c-><c- p>);</c-> <c- k>if</c-> <c- p>(</c-><c- n>ex</c-><c- p>)</c-> <c- k>throw</c-> <c- mi>0</c-><c- p>;</c-> <c- p>}</c->
+<c- p>};</c->
+
+<c- k>struct</c-> <c- n>widget</c-> <c- p>{</c->
+  <c- k>const</c-> <c- b>char</c-><c- o>*</c-> <c- n>s</c-><c- p>;</c->
+  <c- n>widget</c-><c- p>(</c-><c- k>const</c-> <c- b>char</c-><c- o>*</c-> <c- n>s</c-><c- p>)</c-> <c- o>:</c-> <c- n>s</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-> <c- p>{}</c->
+  <c- n>widget</c-><c- p>(</c-><c- n>widget</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- p>{}</c->
+  <c- o>~</c-><c- n>widget</c-><c- p>()</c-> <c- p>{</c-> <c- n>puts</c-><c- p>(</c-><c- n>s</c-><c- p>);</c-> <c- p>}</c->
+<c- p>};</c->
+
+<c- c1>// correct output: dbmca</c->
+<c- n>widget</c-> <c- nf>test1</c-><c- p>()</c-> <c- p>{</c->
+  <c- n>widget</c-> <c- n>a</c-><c- p>(</c-><c- s>"a"</c-><c- p>);</c->
+  <c- n>maybe_ex</c-> <c- n>m</c-><c- p>(</c-><c- s>"m"</c-><c- p>,</c-> true<c- p>);</c->
+  <c- n>widget</c-> <c- n>b</c-><c- p>(</c-><c- s>"b"</c-><c- p>);</c->
+  <c- n>widget</c-> <c- n>c</c-><c- p>(</c-><c- s>"c"</c-><c- p>);</c->
+  <c- n>widget</c-> <c- n>d</c-><c- p>(</c-><c- s>"d"</c-><c- p>);</c->
+  <c- k>return</c-> <c- n>c</c-><c- p>;</c->
+<c- p>}</c->
+
+<c- c1>// correct output: mab</c->
+<c- n>widget</c-> <c- nf>test2</c-><c- p>()</c-> <c- p>{</c->
+  <c- n>widget</c-> <c- n>a</c-><c- p>(</c-><c- s>"a"</c-><c- p>);</c->
+  <c- n>widget</c-> <c- n>b</c-><c- p>(</c-><c- s>"b"</c-><c- p>);</c->
+  <c- k>try</c-> <c- p>{</c->
+    <c- n>maybe_ex</c-> <c- n>m</c-><c- p>(</c-><c- s>"m"</c-><c- p>,</c-> true<c- p>);</c->
+    <c- k>return</c-> <c- n>b</c-><c- p>;</c->
+  <c- p>}</c-> <c- k>catch</c-> <c- p>(...)</c-> <c- p>{</c-> <c- p>}</c->
+  <c- k>return</c-> <c- n>b</c-><c- p>;</c->
+<c- p>}</c->
+
+<c- c1>// correct output if cond:  mbad</c->
+<c- c1>// correct output if !cond: bmcad</c->
+<c- n>widget</c-> <c- nf>test3</c-><c- p>(</c-><c- b>bool</c-> <c- n>cond</c-><c- p>)</c-> <c- p>{</c->
+  <c- n>widget</c-> <c- n>a</c-><c- p>(</c-><c- s>"a"</c-><c- p>);</c->
+  <c- k>try</c-> <c- p>{</c->
+    <c- n>maybe_ex</c-> <c- n>m</c-><c- p>(</c-><c- s>"m"</c-><c- p>,</c-> true<c- p>);</c->
+    <c- p>{</c->
+      <c- n>widget</c-> <c- n>b</c-><c- p>(</c-><c- s>"b"</c-><c- p>);</c->
+      <c- k>if</c-> <c- p>(</c-><c- n>cond</c-><c- p>)</c-> <c- p>{</c->
+        <c- k>return</c-> <c- n>b</c-><c- p>;</c->
+      <c- p>}</c->
+    <c- p>}</c->
+    <c- p>{</c->
+      <c- n>widget</c-> <c- n>c</c-><c- p>(</c-><c- s>"c"</c-><c- p>);</c->
+      <c- k>return</c-> <c- n>c</c-><c- p>;</c->
+    <c- p>}</c->
+  <c- p>}</c-> <c- k>catch</c-> <c- p>(...)</c-> <c- p>{</c-> <c- p>}</c->
+  <c- k>return</c-> <c- n>widget</c-><c- p>(</c-><c- s>"d"</c-><c- p>);</c->
+<c- p>}</c->
+</pre>
+   <p>All possible "exceptional" cases can be grouped into two categories:</p>
+   <ul>
+    <li data-md>
+     <p>If the variable, which destruction throws, is defined <em>inside</em> the potential scope of the return variable, we need to revert the effects of the <code class="highlight"><c- k>return</c-> <c- n>rv</c-><c- p>;</c-></code> statement, and not destroy the variable right away</p>
+    <li data-md>
+     <p>If the variable, which destruction throws, is defined <em>outside</em> the potential scope of the return variable, we need to destroy the variable</p>
+   </ul>
+   <p>To deal with the various possible circumstances, the following implementation strategy is suggested:</p>
+   <ul>
+    <li data-md>
+     <p>There are two flags per function:</p>
+    <li data-md>
+     <p>The "initialized" flag, <code class="highlight">true</code> when the object would be alive even without NRVO</p>
+    <li data-md>
+     <p>The "returned" flag, <code class="highlight">true</code> when we have executed <code class="highlight"><c- k>return</c-> <c- n>rv</c-><c- p>;</c-></code> and no destructor has thrown yet</p>
+    <li data-md>
+     <p>Both initially <code class="highlight">false</code></p>
+    <li data-md>
+     <p>After the construction of a return variable:</p>
+    <li data-md>
+     <p>Set "initialized" to <code class="highlight">true</code></p>
+    <li data-md>
+     <p>At the normal destruction of a return variable:</p>
+    <li data-md>
+     <p>Set "initialized" to <code class="highlight">false</code></p>
+    <li data-md>
+     <p>Only destroy if "returned" is <code class="highlight">false</code></p>
+    <li data-md>
+     <p>At the <code class="highlight"><c- k>return</c-> <c- n>rv</c-><c- p>;</c-></code> statement:</p>
+    <li data-md>
+     <p>Set "returned" to <code class="highlight">true</code></p>
+    <li data-md>
+     <p>If the potentially-throwing destructor of a local variable, which potential scope contains a <code class="highlight"><c- k>return</c-></code> statement, throws:</p>
+    <li data-md>
+     <p>If "initialized" is <code class="highlight">false</code> and "returned" is <code class="highlight">true</code>, destroy the result object</p>
+    <li data-md>
+     <p>Set "returned" to <code class="highlight">false</code></p>
+    <li data-md>
+     <p>The destruction of the return variable itself only needs to be instrumented in this way if the implementation performs extended copy elision, treating some potential return variables as return variables</p>
+   </ul>
+   <p>These flags can also be used in the exception-safe implementation of "guaranteed URVO":</p>
+   <ul>
+    <li data-md>
+     <p>After the execution of the operand of a <code class="highlight"><c- k>return</c-></code> statement, but before the destruction of temporaries:</p>
+    <li data-md>
+     <p>Set "returned" to <code class="highlight">true</code></p>
+    <li data-md>
+     <p>In a <code class="highlight"><c- k>return</c-></code> statement, if the potentially-throwing destructor of a temporary throws:</p>
+    <li data-md>
+     <p>Destroy the result object</p>
+    <li data-md>
+     <p>Set "returned" to <code class="highlight">false</code></p>
+   </ul>
+   <h3 class="heading settled" data-level="6.7" id="potential-elision"><span class="secno">6.7. </span><span class="content">When is copy elision for potential return variables feasible?</span><a class="self-link" href="#potential-elision"></a></h3>
+   <p>Extended copy elision (treating a potential return variable as a return variable) does not seem to be easily achievable. For example:</p>
+<pre class="highlight"><c- b>bool</c-> <c- nf>toss_a_coin</c-><c- p>()</c-> <c- p>{</c->
+  <c- k>return</c-> true<c- p>;</c->
+<c- p>}</c->
+
+<c- n>widget</c-> <c- nf>test</c-><c- p>()</c-> <c- p>{</c->
+  <c- n>widget</c-> <c- n>a</c-><c- p>;</c->
+  <c- n>widget</c-> <c- n>b</c-><c- p>;</c->
+  <c- n>widget</c-> <c- n>c</c-><c- p>;</c->
+  <c- k>if</c-> <c- p>(</c-><c- n>toss_a_coin</c-><c- p>())</c-> <c- p>{</c->
+    <c- k>return</c-> <c- n>widget</c-><c- p>();</c->  <c- c1>// d</c->
+  <c- p>}</c->
+  <c- k>return</c-> <c- n>b</c-><c- p>;</c->
+<c- p>}</c->
+</pre>
+   <p>If the implementation treats <code class="highlight"><c- n>b</c-></code> as a return variable, then the destruction shall occur in the order "dcba". (Because <code class="highlight"><c- n>b</c-></code> does not end up being returned, is shall be treated like a normal local variable.) But that means <code class="highlight"><c- n>b</c-></code> is destroyed after <code class="highlight"><c- n>d</c-></code> is constructed, which is not possible. To perform copy elision in this case, the implementation must prove that the destruction of <code class="highlight"><c- n>b</c-></code> can be moved right before the construction of <code class="highlight"><c- n>d</c-></code> (and before the destruction of <code class="highlight"><c- n>c</c-></code>!) under the "as-if" rule.</p>
+   <p>This only seems feasible in case no non-trivially-destructible variables are declared between the potential return variable <code class="highlight"><c- n>b</c-></code> and the <code class="highlight"><c- k>return</c-></code> statement that does not return <code class="highlight"><c- n>b</c-></code>, and if the operand of the <code class="highlight"><c- k>return</c-></code> statement is "pure". These limiting conditions are satisfied in the following common case:</p>
+<pre class="highlight"><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>int</c-><c- o>></c-> <c- n>test</c-><c- p>()</c-> <c- p>{</c->
+  <c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>int</c-><c- o>></c-> <c- n>result</c-><c- p>;</c->
+  <c- n>fill_vector</c-><c- p>(</c-><c- n>result</c-><c- p>);</c->
+  <c- k>if</c-> <c- p>(</c-><c- n>something_went_wrong</c-><c- p>(</c-><c- n>result</c-><c- p>))</c-> <c- k>return</c-> <c- p>{};</c->
+  <c- k>return</c-> <c- n>result</c-><c- p>;</c->
+<c- p>}</c->
+</pre>
+   <h3 class="heading settled" data-level="6.8" id="abi"><span class="secno">6.8. </span><span class="content">Are the proposed changes source or ABI breaking?</span><a class="self-link" href="#abi"></a></h3>
    <p>Propored changes <em>can break</em> constant expressions that rely on effects of the copy-initialization and destruction that are proposed to be elided. The defect report <a data-link-type="biblio" href="#biblio-cwg2278">[CWG2278]</a>, requiring that copy elision is not performed in constant expressions, has been presented in March, 2018. However, relying on the effects of copy-initialization and destruction in constant expressions is considered exotic, and real-world code breakage is deemed to be minimal.</p>
    <p>The proposal prohibits some corner-case copy elision (<a href="#req-lambda">§ 6.2.2 Copy elision is no longer allowed for lambda captures</a>), which was most probably a defect. Note that previously, copy elision could not be relied upon by portable programs.</p>
    <p>The proposal allows some new cases of copy elision described in previous sub-sections. Programs that relied on copy elision not being performed there (corner-case scenarios) will no longer be valid.</p>
    <p>The proposal is <em>not</em> ABI-breaking, because, in all known implementations, whether NRVO is performed for a function does not impact its calling convention.</p>
-   <h3 class="heading settled" data-level="6.7" id="costs"><span class="secno">6.7. </span><span class="content">What are the costs associated with the proposed changes?</span><a class="self-link" href="#costs"></a></h3>
+   <h3 class="heading settled" data-level="6.9" id="costs"><span class="secno">6.9. </span><span class="content">What are the costs associated with the proposed changes?</span><a class="self-link" href="#costs"></a></h3>
    <p>There is no runtime cost associated with the proposed copy elision, because storage for the return object is allocated on stack before the function body starts executing, in all known implementations.</p>
    <p>The proposal will make declarations of local variables with automatic storage duration context-dependent: storage of a variable will depend on <code class="highlight"><c- k>return</c-></code> statements in its potential scope. However, this analysis is local and purely syntactic. The impact on compilation times is thus deemed to be minimal.</p>
    <p>Compilers that already perform NRVO will enable it (or at least the required part of it) in all compilation modes. The proposal might even have a positive impact on compilation time, because such implementations will not have to check whether copy-initialization on the return type can be performed.</p>

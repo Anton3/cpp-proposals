@@ -59,6 +59,8 @@ R1 (post-Prague):
 - Expanded the [[#explicit-mark]] subsection
 - Added [[#optional-mark]] subsection
 - Added [[#complex-expressions]] subsection
+- Added [[#implementation-exceptions]] subsection
+- Added [[#potential-elision]] subsection
 
 # Introduction # {#introduction}
 
@@ -968,6 +970,138 @@ widget* bar() {
 </xmp>
 
 Accounting for such cases will lead to pessimizations for some implementations.
+
+## Implementing the proposal: how to deal with exceptions? ## {#implementation-exceptions}
+
+If the `return rv;` statement is executed, but the destruction of a local variable throws, we may need to destroy the return variable. Some popular compilers, such as GCC and Clang, leak in such cases (as of the time of writing) when they choose to perform copy elision. Examples:
+
+<xmp>
+#include <cstdio>
+
+struct maybe_ex {
+  const char* s;
+  bool ex;
+  maybe_ex(const char* s, bool ex) : s(s), ex(ex) {}
+  ~maybe_ex() noexcept(false) { puts(s); if (ex) throw 0; }
+};
+
+struct widget {
+  const char* s;
+  widget(const char* s) : s(s) {}
+  widget(widget&&) {}
+  ~widget() { puts(s); }
+};
+
+// correct output: dbmca
+widget test1() {
+  widget a("a");
+  maybe_ex m("m", true);
+  widget b("b");
+  widget c("c");
+  widget d("d");
+  return c;
+}
+
+// correct output: mab
+widget test2() {
+  widget a("a");
+  widget b("b");
+  try {
+    maybe_ex m("m", true);
+    return b;
+  } catch (...) { }
+  return b;
+}
+
+// correct output if cond:  mbad
+// correct output if !cond: bmcad
+widget test3(bool cond) {
+  widget a("a");
+  try {
+    maybe_ex m("m", true);
+    {
+      widget b("b");
+      if (cond) {
+        return b;
+      }
+    }
+    {
+      widget c("c");
+      return c;
+    }
+  } catch (...) { }
+  return widget("d");
+}
+</xmp>
+
+All possible "exceptional" cases can be grouped into two categories:
+
+- If the variable, which destruction throws, is defined *inside* the potential scope of the return variable, we need to revert the effects of the `return rv;` statement, and not destroy the variable right away
+- If the variable, which destruction throws, is defined *outside* the potential scope of the return variable, we need to destroy the variable
+
+To deal with the various possible circumstances, the following implementation strategy is suggested:
+
+- There are two flags per function:
+  - The "initialized" flag, `true` when the object would be alive even without NRVO
+  - The "returned" flag, `true` when we have executed `return rv;` and no destructor has thrown yet
+  - Both initially `false`
+
+- After the construction of a return variable:
+  - Set "initialized" to `true`
+
+- At the normal destruction of a return variable:
+  - Set "initialized" to `false`
+  - Only destroy if "returned" is `false`
+
+- At the `return rv;` statement:
+  - Set "returned" to `true`
+
+- If the potentially-throwing destructor of a local variable, which potential scope contains a `return` statement, throws:
+  - If "initialized" is `false` and "returned" is `true`, destroy the result object
+  - Set "returned" to `false`
+  - The destruction of the return variable itself only needs to be instrumented in this way if the implementation performs extended copy elision, treating some potential return variables as return variables
+
+These flags can also be used in the exception-safe implementation of "guaranteed URVO":
+
+- After the execution of the operand of a `return` statement, but before the destruction of temporaries:
+  - Set "returned" to `true`
+
+- In a `return` statement, if the potentially-throwing destructor of a temporary throws:
+  - Destroy the result object
+  - Set "returned" to `false`
+
+## When is copy elision for potential return variables feasible? ## {#potential-elision}
+
+Extended copy elision (treating a potential return variable as a return variable) does not seem to be easily achievable. For example:
+
+<xmp>
+bool toss_a_coin() {
+  return true;
+}
+
+widget test() {
+  widget a;
+  widget b;
+  widget c;
+  if (toss_a_coin()) {
+    return widget();  // d
+  }
+  return b;
+}
+</xmp>
+
+If the implementation treats `b` as a return variable, then the destruction shall occur in the order "dcba". (Because `b` does not end up being returned, is shall be treated like a normal local variable.) But that means `b` is destroyed after `d` is constructed, which is not possible. To perform copy elision in this case, the implementation must prove that the destruction of `b` can be moved right before the construction of `d` (and before the destruction of `c`!) under the "as-if" rule.
+
+This only seems feasible in case no non-trivially-destructible variables are declared between the potential return variable `b` and the `return` statement that does not return `b`, and if the operand of the `return` statement is "pure". These limiting conditions are satisfied in the following common case:
+
+<xmp>
+std::vector<int> test() {
+  std::vector<int> result;
+  fill_vector(result);
+  if (something_went_wrong(result)) return {};
+  return result;
+}
+</xmp>
 
 ## Are the proposed changes source or ABI breaking? ## {#abi}
 
