@@ -612,27 +612,16 @@ struct A {
 struct X { ~X() noexcept(false) { throw 0; } };
 
 A f() {
-  std::intptr_t p = 0;
-
-  try {
-    A a;
-    X x;
-    A b;
-    A c;  // #1
-    A d;
-    p = std::bit_cast<std::intptr_t>(&c);
-    return c;  // #2
-  } catch (...) {
-    A e;  // #3
-    if (p == std::bit_cast<std::intptr_t>(&e)) {  // #4
-      throw 1;
-    }
-    return e;
-  }
+  A a;
+  X x;
+  A b;
+  A c;  // #1
+  A d;
+  return c;  // #2
 }
 </xmp>
 
-At #1, the [$return variable$] `c` is constructed in the storage for the result object of the function call expression. The local variable `c` does not denote the result object, because the control will exit the scope of `c` by the means of an exception. At #2, the local variable `d` is destroyed, then the local variable `b` is destroyed. Next, the local variable `x` is destroyed, causing stack unwinding, resulting in the destruction of the local variable `c`, followed by the destruction of the local variable `a`. At #3, the [$return variable$] `e` is constructed in the storage for the result object of the function call expression. The local variable `e` does not denote the result object as well, because the control will exit the scope of `e` by the means of an exception. At #4, the address previously taken of `c` compares equal to the address of `e`. The function call is terminated by an exception.
+At #1, the [$return variable$] `c` is constructed in the storage for the result object of the function call expression. The local variable `c` does not denote the result object, because the control will exit the scope of `c` by the means of an exception. At #2, the local variable `d` is destroyed, then the local variable `b` is destroyed. Next, the local variable `x` is destroyed, causing stack unwinding, resulting in the destruction of the local variable `c`, followed by the destruction of the local variable `a`. The function call is terminated by the exception.
 
 — *end example* ]
 </blockquote>
