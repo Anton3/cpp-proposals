@@ -1031,33 +1031,33 @@ All possible "exceptional" cases can be grouped into two categories:
 To deal with the various possible circumstances, the following implementation strategy is suggested:
 
 - There are two flags per function:
-  - The "initialized" flag, `true` when the object would be alive even without NRVO
-  - The "returned" flag, `true` when we have executed `return rv;` and no destructor has thrown yet
-  - Both initially `false`
+    - The "initialized" flag, `true` when the object would be alive even without NRVO
+    - The "returned" flag, `true` when we have executed `return rv;` and no destructor has thrown yet
+    - Both initially `false`
 
 - After the construction of a return variable:
-  - Set "initialized" to `true`
+    - Set "initialized" to `true`
 
 - At the normal destruction of a return variable:
-  - Set "initialized" to `false`
-  - Only destroy if "returned" is `false`
+    - Set "initialized" to `false`
+    - Only destroy if "returned" is `false`
 
 - At the `return rv;` statement:
-  - Set "returned" to `true`
+    - Set "returned" to `true`
 
 - If the potentially-throwing destructor of a local variable, which potential scope contains a `return` statement, throws:
-  - If "initialized" is `false` and "returned" is `true`, destroy the result object
-  - Set "returned" to `false`
-  - The destruction of the return variable itself only needs to be instrumented in this way if the implementation performs extended copy elision, treating some potential return variables as return variables
+    - If "initialized" is `false` and "returned" is `true`, destroy the result object
+    - Set "returned" to `false`
+    - The destruction of the return variable itself only needs to be instrumented in this way if the implementation performs extended copy elision, treating some potential return variables as return variables
 
 These flags can also be used in the exception-safe implementation of "guaranteed URVO":
 
 - After the execution of the operand of a `return` statement, but before the destruction of temporaries:
-  - Set "returned" to `true`
+    - Set "returned" to `true`
 
 - In a `return` statement, if the potentially-throwing destructor of a temporary throws:
-  - Destroy the result object
-  - Set "returned" to `false`
+    - Destroy the result object
+    - Set "returned" to `false`
 
 ## When is copy elision for potential return variables feasible? ## {#potential-elision}
 
@@ -1081,7 +1081,7 @@ widget test() {
 
 If the implementation treats `b` as a return variable, then the destruction shall occur in the order "dcba". (Because `b` does not end up being returned, is shall be treated like a normal local variable.) But that means `b` is destroyed after `d` is constructed, which is not possible. To perform copy elision in this case, the implementation must prove that the destruction of `b` can be moved right before the construction of `d` (and before the destruction of `c`!) under the "as-if" rule.
 
-This only seems feasible in case no non-trivially-destructible variables are declared between the potential return variable `b` and the `return` statement that does not return `b`, and if the operand of the `return` statement is "pure". These limiting conditions are satisfied in the following common case:
+This only seems feasible in case no non-trivially-destructible variables are declared between the potential return variable `b` and the `return` statement that does not return `b`, and if the operand of the `return` statement is "pure" and does not mention `b`. These limiting conditions are satisfied in the following common case:
 
 <xmp>
 std::vector<int> test() {

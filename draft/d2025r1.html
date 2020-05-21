@@ -2367,47 +2367,61 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
    <ul>
     <li data-md>
      <p>There are two flags per function:</p>
-    <li data-md>
-     <p>The "initialized" flag, <code class="highlight">true</code> when the object would be alive even without NRVO</p>
-    <li data-md>
-     <p>The "returned" flag, <code class="highlight">true</code> when we have executed <code class="highlight"><c- k>return</c-> <c- n>rv</c-><c- p>;</c-></code> and no destructor has thrown yet</p>
-    <li data-md>
-     <p>Both initially <code class="highlight">false</code></p>
+     <ul>
+      <li data-md>
+       <p>The "initialized" flag, <code class="highlight">true</code> when the object would be alive even without NRVO</p>
+      <li data-md>
+       <p>The "returned" flag, <code class="highlight">true</code> when we have executed <code class="highlight"><c- k>return</c-> <c- n>rv</c-><c- p>;</c-></code> and no destructor has thrown yet</p>
+      <li data-md>
+       <p>Both initially <code class="highlight">false</code></p>
+     </ul>
     <li data-md>
      <p>After the construction of a return variable:</p>
-    <li data-md>
-     <p>Set "initialized" to <code class="highlight">true</code></p>
+     <ul>
+      <li data-md>
+       <p>Set "initialized" to <code class="highlight">true</code></p>
+     </ul>
     <li data-md>
      <p>At the normal destruction of a return variable:</p>
-    <li data-md>
-     <p>Set "initialized" to <code class="highlight">false</code></p>
-    <li data-md>
-     <p>Only destroy if "returned" is <code class="highlight">false</code></p>
+     <ul>
+      <li data-md>
+       <p>Set "initialized" to <code class="highlight">false</code></p>
+      <li data-md>
+       <p>Only destroy if "returned" is <code class="highlight">false</code></p>
+     </ul>
     <li data-md>
      <p>At the <code class="highlight"><c- k>return</c-> <c- n>rv</c-><c- p>;</c-></code> statement:</p>
-    <li data-md>
-     <p>Set "returned" to <code class="highlight">true</code></p>
+     <ul>
+      <li data-md>
+       <p>Set "returned" to <code class="highlight">true</code></p>
+     </ul>
     <li data-md>
      <p>If the potentially-throwing destructor of a local variable, which potential scope contains a <code class="highlight"><c- k>return</c-></code> statement, throws:</p>
-    <li data-md>
-     <p>If "initialized" is <code class="highlight">false</code> and "returned" is <code class="highlight">true</code>, destroy the result object</p>
-    <li data-md>
-     <p>Set "returned" to <code class="highlight">false</code></p>
-    <li data-md>
-     <p>The destruction of the return variable itself only needs to be instrumented in this way if the implementation performs extended copy elision, treating some potential return variables as return variables</p>
+     <ul>
+      <li data-md>
+       <p>If "initialized" is <code class="highlight">false</code> and "returned" is <code class="highlight">true</code>, destroy the result object</p>
+      <li data-md>
+       <p>Set "returned" to <code class="highlight">false</code></p>
+      <li data-md>
+       <p>The destruction of the return variable itself only needs to be instrumented in this way if the implementation performs extended copy elision, treating some potential return variables as return variables</p>
+     </ul>
    </ul>
    <p>These flags can also be used in the exception-safe implementation of "guaranteed URVO":</p>
    <ul>
     <li data-md>
      <p>After the execution of the operand of a <code class="highlight"><c- k>return</c-></code> statement, but before the destruction of temporaries:</p>
-    <li data-md>
-     <p>Set "returned" to <code class="highlight">true</code></p>
+     <ul>
+      <li data-md>
+       <p>Set "returned" to <code class="highlight">true</code></p>
+     </ul>
     <li data-md>
      <p>In a <code class="highlight"><c- k>return</c-></code> statement, if the potentially-throwing destructor of a temporary throws:</p>
-    <li data-md>
-     <p>Destroy the result object</p>
-    <li data-md>
-     <p>Set "returned" to <code class="highlight">false</code></p>
+     <ul>
+      <li data-md>
+       <p>Destroy the result object</p>
+      <li data-md>
+       <p>Set "returned" to <code class="highlight">false</code></p>
+     </ul>
    </ul>
    <h3 class="heading settled" data-level="6.7" id="potential-elision"><span class="secno">6.7. </span><span class="content">When is copy elision for potential return variables feasible?</span><a class="self-link" href="#potential-elision"></a></h3>
    <p>Extended copy elision (treating a potential return variable as a return variable) does not seem to be easily achievable. For example:</p>
@@ -2426,7 +2440,7 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
 <c- p>}</c->
 </pre>
    <p>If the implementation treats <code class="highlight"><c- n>b</c-></code> as a return variable, then the destruction shall occur in the order "dcba". (Because <code class="highlight"><c- n>b</c-></code> does not end up being returned, is shall be treated like a normal local variable.) But that means <code class="highlight"><c- n>b</c-></code> is destroyed after <code class="highlight"><c- n>d</c-></code> is constructed, which is not possible. To perform copy elision in this case, the implementation must prove that the destruction of <code class="highlight"><c- n>b</c-></code> can be moved right before the construction of <code class="highlight"><c- n>d</c-></code> (and before the destruction of <code class="highlight"><c- n>c</c-></code>!) under the "as-if" rule.</p>
-   <p>This only seems feasible in case no non-trivially-destructible variables are declared between the potential return variable <code class="highlight"><c- n>b</c-></code> and the <code class="highlight"><c- k>return</c-></code> statement that does not return <code class="highlight"><c- n>b</c-></code>, and if the operand of the <code class="highlight"><c- k>return</c-></code> statement is "pure". These limiting conditions are satisfied in the following common case:</p>
+   <p>This only seems feasible in case no non-trivially-destructible variables are declared between the potential return variable <code class="highlight"><c- n>b</c-></code> and the <code class="highlight"><c- k>return</c-></code> statement that does not return <code class="highlight"><c- n>b</c-></code>, and if the operand of the <code class="highlight"><c- k>return</c-></code> statement is "pure" and does not mention <code class="highlight"><c- n>b</c-></code>. These limiting conditions are satisfied in the following common case:</p>
 <pre class="highlight"><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>int</c-><c- o>></c-> <c- n>test</c-><c- p>()</c-> <c- p>{</c->
   <c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>int</c-><c- o>></c-> <c- n>result</c-><c- p>;</c->
   <c- n>fill_vector</c-><c- p>(</c-><c- n>result</c-><c- p>);</c->
