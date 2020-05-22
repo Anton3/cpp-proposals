@@ -1049,10 +1049,11 @@ int main() {
 All possible "exceptional" cases can be grouped into two categories:
 
 - If the variable, which destruction throws, is defined *inside* the potential scope of the return variable, we need to revert the effects of the `return rv;` statement, and not destroy the variable right away
-- If the variable, which destruction throws, is defined *outside* the potential scope of the return variable, we need to destroy the variable
+- If the variable, which destruction throws, is defined *outside* the potential scope of the return variable, we need to destroy the return variable
 
 To deal with the various possible circumstances, the following implementation strategy is suggested:
 
+<blockquote>
 - There are two flags per function:
     - The "initialized" flag, `true` when the object would be alive even without NRVO
     - The "returned" flag, `true` when we have executed `return rv;` and no destructor has thrown yet
@@ -1068,19 +1069,20 @@ To deal with the various possible circumstances, the following implementation st
 - At the `return rv;` statement:
     - Set "returned" to `true`
 
-- If the potentially-throwing destructor of a local variable, which potential scope contains a `return` statement, throws:
-    - If "initialized" is `false` and "returned" is `true`, destroy the result object
+- If the potentially-throwing destructor of a local variable (other than a return variable), which potential scope contains a `return` statement, throws:
+    - If "initialized" is `false` and "returned" is `true`, destroy the result slot
     - Set "returned" to `false`
-    - The destruction of the return variable itself only needs to be instrumented in this way if the implementation performs extended copy elision, treating some potential return variables as return variables
 
-These flags can also be used in the exception-safe implementation of "guaranteed URVO":
-
-- After the execution of the operand of a `return` statement, but before the destruction of temporaries:
+- After the execution of the operand of a `return` statement (other than a `return rv;` statement), but before the destruction of temporaries:
     - Set "returned" to `true`
 
-- In a `return` statement, if the potentially-throwing destructor of a temporary throws:
-    - Destroy the result object
+- In a `return` statement (other than a `return rv;` statement), if the potentially-throwing destructor of a temporary throws:
+    - Destroy the return slot
     - Set "returned" to `false`
+
+</blockquote>
+
+It is expected that constant propagation eliminates all branches at least for non-exceptional paths. An implementation that uses Table-Driven Exception Handling can instead fold these flags into exception-handling tables, eliminating all overhead for non-exceptional paths.
 
 ## When is copy elision for potential return variables feasible? ## {#potential-elision}
 
