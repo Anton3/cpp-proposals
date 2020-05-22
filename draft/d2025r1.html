@@ -2317,11 +2317,9 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
     <c- k>if</c-> <c- p>(</c-><c- k>throws</c-><c- p>)</c-> <c- k>throw</c-> <c- mi>0</c-><c- p>;</c->
   <c- p>}</c->
 
-  <c- n>X</c-><c- p>(</c-><c- n>X</c-><c- o>&amp;&amp;</c-> <c- n>o</c-><c- p>)</c-> <c- o>:</c-> <c- n>s</c-><c- p>(</c-><c- n>o</c-><c- p>.</c-><c- n>s</c-><c- p>),</c-> <c- k>throws</c-><c- p>(</c-><c- n>o</c-><c- p>.</c-><c- k>throws</c-><c- p>)</c-> <c- p>{</c->
-    <c- n>printf</c-><c- p>(</c-><c- s>"%c (copy)</c-><c- se>\n</c-><c- s>"</c-><c- p>,</c-> <c- n>s</c-><c- p>);</c->
-  <c- p>}</c->
+  <c- n>X</c-><c- p>(</c-><c- n>X</c-><c- o>&amp;&amp;</c-> <c- n>o</c-><c- p>)</c-> <c- o>=</c-> <c- k>delete</c-><c- p>;</c->
 
-  <c- k>explicit</c-> <c- n>X</c-><c- p>(</c-><c- b>char</c-> <c- n>s</c-><c- p>,</c-> <c- b>bool</c-> <c- k>throws</c-> <c- o>=</c-> false<c- p>)</c-> 
+  <c- k>explicit</c-> <c- nf>X</c-><c- p>(</c-><c- b>char</c-> <c- n>s</c-><c- p>,</c-> <c- b>bool</c-> <c- k>throws</c-> <c- o>=</c-> false<c- p>)</c-> 
     <c- o>:</c-> <c- n>s</c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- k>throws</c-><c- p>(</c-><c- k>throws</c-><c- p>)</c->
   <c- p>{</c->
     <c- n>printf</c-><c- p>(</c-><c- s>"%c</c-><c- se>\n</c-><c- s>"</c-><c- p>,</c-> <c- n>s</c-><c- p>);</c->
@@ -2352,7 +2350,7 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
     <c- n>X</c-> <c- n>m</c-><c- p>(</c-><c- sc>'m'</c-><c- p>,</c-> true<c- p>);</c->
     <c- k>return</c-> <c- n>b</c-><c- p>;</c->
   <c- p>}</c-> <c- k>catch</c-> <c- p>(...)</c-> <c- p>{</c-> <c- p>}</c->
-  <c- k>return</c-> <c- n>b</c-><c- p>;</c->
+  <c- k>return</c-> <c- n>b</c-><c- p>;</c->  <c- c1>// b is returned here</c->
 <c- p>}</c->
 
 <c- c1>// correct order of destruction if cond:  mbad</c->
