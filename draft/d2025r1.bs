@@ -85,9 +85,9 @@ void test() {
 
 The implementation could eliminate some copies under the as-if rule or as allowed by <a href="http://eel.is/c++draft/class.copy.elision#1">copy elision</a>. The copy in `bar` could be eliminated by Unnamed Return Value Optimization (URVO) and the copy in `foo` — by Named Return Value Optimization (NRVO): `widget()` and `w` would be constructed directly into the return slot. Collectively, both optimizations are sometimes known as RVO; confusingly, URVO is sometimes also called RVO. Note that all of these terms are applied to the implementation and to the physical machine, and are not defined in the Standard.
 
-The updated value category and temporary materialization rules brought by C++17 (informally known as **guaranteed copy elision**) mandated, among everything, that no copies can be made for a returned prvalue expression (except for <a href="http://eel.is/c++draft/class.temporary">trivially copyable</a> class types). This made URVO mandatory in most cases.
+The updated value category and temporary materialization rules brought by C++17 (informally known as **guaranteed copy elision**) mandated, among everything, that no copies or moves can be made for a returned prvalue expression (except for <a href="http://eel.is/c++draft/class.temporary">trivially copyable</a> class types). This made URVO mandatory in most cases.
 
-In C++20, the only copy allowed in the example is the one at line 3. Copy elision (NRVO) is allowed there and is routinely performed by most compilers, but is still non-guaranteed, and the `widget` class cannot be non-copyable non-movable. With the proposed wording, `x` is called a [$return variable$], and no copy is performed at line 3 — this copy evasion will also informally be called **guaranteed copy elision**.
+In C++20, the only copy allowed in the example is the one at line 3 (actually, `x` is implicitly moved from). Copy elision (NRVO) is allowed there and is routinely performed by most compilers, but is still non-guaranteed, and the `widget` class cannot be non-copyable non-movable. With the proposed wording, `x` is called a [$return variable$], and no copy or move is performed at line 3 — this copy evasion will also informally be called **guaranteed copy elision**.
 
 To differentiate between the two kinds of guaranteed copy elision, it is sometimes useful to use informal terms "guaranteed URVO" and "guaranteed NRVO", meaning the respective language features. Unless otherwise specified, "copy elision" refers to the implementation-defined copy elision provided by <a href="http://eel.is/c++draft/class.copy.elision#1">[class.copy.elision]</a>.
 
@@ -169,6 +169,8 @@ To state the gist of the main requirement even easier (and even less rigorous):
 
 ## Examples ## {#examples}
 
+Suppose that `widget` is a class type, is copy-constructible and move-constructible. Unless stated otherwise, references to copy elision utilize <a href="http://eel.is/c++draft/class.copy.elision#1.1">[class.copy.elision]/(1.1)</a>.
+
 Legend:
 
 - ✗ Old
@@ -182,7 +184,7 @@ widget setup_widget(int x) {
 }
 </xmp>
 
-- ✗✓ No copies or moves needed at line 2
+- ✗✓ No copies or moves needed at line 2 ("guaranteed URVO")
 
 ### Example 2 ### {#ex-2}
 
@@ -194,34 +196,135 @@ widget setup_widget(int x) {
 }
 </xmp>
 
-- ✗ Move or copy elision at line 4
-- ✓ Guaranteed copy elision at line 4
+- ✗ Move (possibly elided) at line 4
+- ✓ No copies or moves needed at line 4 ("guaranteed NRVO")
 
 ### Example 3 ### {#ex-3}
 
-Implementation-wise, `w1`, `w2` and `w3` will occupy the return slot at different times. Wording-wise, if we reach line 10, then `w1` and `w2` are not considered to have ever denoted the result object of the function call; they are considered normal local variables, so the result object of the function is only constructed and destroyed once.
+Guaranteed copy elision cannot be performed at line 4, because the `return` statement on line 6, which belongs to the potential scope of `w`, returns non-`w`.
 
 <xmp line-numbers="on">
 widget test() {
-  {
-    {
-      widget w1;
-      if (…) return w1;
-    }
-    widget w2;
-    if (…) return w2;
+  widget w;
+  if (…) {
+    return w;  //!
+  } else {
+    return widget();
   }
-  widget w3;
-  return w3;
 }
 </xmp>
 
-- ✗ Move or copy elision at lines 5, 8, 11
-- ✓ Guaranteed copy elision at lines 5, 8, 11
+- ✗✓ Move (possibly elided) at line 4
 
 ### Example 4 ### {#ex-4}
 
-If `w` is not returned, it is destroyed, and another `widget` (perhaps, another `w`) can take its place.
+The example above can be "fixed" so that guaranteed copy elision is performed. Now all the `return` statements within the potential scope of `w` (the one on line 4) return `w`.
+
+<xmp line-numbers="on">
+widget test() {
+  if (…) {
+    widget w;
+    return w;
+  } else {
+    return widget();
+  }
+}
+</xmp>
+
+- ✗ Move (possibly elided) at line 4
+- ✓ No copies or moves needed at line 4 ("guaranteed NRVO")
+
+### Example 5 ### {#ex-5}
+
+Guaranteed copy elision cannot be performed at line 6, because the `return` statement on line 4, which belongs to the potential scope of `w`, returns non-`w`.
+
+<xmp line-numbers="on">
+widget test() {
+  widget w;
+  …
+  if (…) return {};
+  …
+  return w;  //!
+}
+</xmp>
+
+- ✗✓ Move (possibly elided) at line 6
+
+### Example 6 ### {#ex-6}
+
+The example above can be "fixed" so that guaranteed copy elision is performed. Now all the `return` statements within the potential scope of `w` (the one on line 7) return `w`.
+
+<xmp line-numbers="on">
+widget test() {
+  do {
+    widget w;
+    …
+    if (…) break;
+    …
+    return w;
+  } while (false);
+  return {};
+}
+</xmp>
+
+- ✗ Move (possibly elided) at line 7
+- ✓ No copies or moves needed at line 7 ("guaranteed NRVO")
+
+### Example 7 ### {#ex-7}
+
+Here, the `return` statement at line 2 does not belong to the potential scope of `b` (which starts at line 3), therefore not inhibiting guaranteed copy elision at line 5.
+
+<xmp line-numbers="on">
+widget test() {
+  if (…) return {};  //!
+  widget b;
+  …
+  return b;
+}
+</xmp>
+
+- ✗ Move (possibly elided) at line 5
+- ✓ No copies or moves needed at line 5 ("guaranteed NRVO")
+
+### Example 8 ### {#ex-8}
+
+Here, the `return` statement at line 5 belongs to the potential scope of `one` and thus inhibits guaranteed copy elision for `one`.
+
+<xmp line-numbers="on">
+widget test() {
+  widget one;
+  if (toss_a_coin()) return one;  //!
+  widget two;
+  return two;
+}
+</xmp>
+
+- ✗ Move (possibly elided) at lines 3 and 5
+- ✓ Move (possibly elided) at line 3. No copies or moves needed at line 5 ("guaranteed NRVO")
+
+### Example 9 ### {#ex-9}
+
+Constructing, setting up and passing an object as a parameter by value using an immediately invoked lambda expression (`p` is directly initialized under the name of `w`).
+
+<xmp line-numbers="on">
+void consume_widget(widget p);
+
+void test(int x) {
+  int y = process(x);
+  consume_widget([&] {
+    auto w = widget(x);
+    w.set_y(y);
+    return w;
+  }());
+}
+</xmp>
+
+- ✗ Move (possibly elided) at line 8
+- ✓ No copies or moves needed at line 8 ("guaranteed NRVO")
+
+### Example 10 ### {#ex-10}
+
+If `w` is not returned, it is destroyed, and another `widget` (perhaps, another object named `w`) can take its place.
 
 <xmp line-numbers="on">
 widget test() {
@@ -243,81 +346,32 @@ widget test() {
 }
 </xmp>
 
-- ✗ Move or copy elision at lines 9 and 14
-- ✓ Guaranteed copy elision at lines 9 and 14
+- ✗ Move (possibly elided) at lines 9 and 14
+- ✓ No copies or moves needed at lines 9 and 14 ("guaranteed NRVO")
 
-### Example 5 ### {#ex-5}
+### Example 11 ### {#ex-11}
 
-Copy elision is not guaranteed at line 4, because the `return` statement on line 6, which is within the potential scope of `w`, returns non-`w`.
+Implementation-wise, `w1`, `w2` and `w3` will occupy the return slot at different times. Wording-wise, if we reach line 10, then `w1` and `w2` are not considered to have ever denoted the result object of the function call; they are considered normal local variables, so the result object of the function is only constructed and destroyed once.
 
 <xmp line-numbers="on">
 widget test() {
-  widget w;
-  if (…) {
-    return w;  //!
-  } else {
-    return widget();
+  {
+    {
+      widget w1;
+      if (…) return w1;
+    }
+    widget w2;
+    if (…) return w2;
   }
+  widget w3;
+  return w3;
 }
 </xmp>
 
-- ✗✓ Move or copy elision at line 4
+- ✗ Move (possibly elided) at lines 5, 8, 11
+- ✓ No copies or moves needed at lines 5, 8, 11 ("guaranteed NRVO")
 
-### Example 6 ### {#ex-6}
-
-The example above can be "fixed" so that guaranteed copy elision is performed. Now all the `return` statements within the potential scope of `w` (the one on line 4) return `w`.
-
-<xmp line-numbers="on">
-widget test() {
-  if (…) {
-    widget w;
-    return w;
-  } else {
-    return widget();
-  }
-}
-</xmp>
-
-- ✗ Move or copy elision at line 4
-- ✓ Guaranteed copy elision at line 4
-
-### Example 7 ### {#ex-7}
-
-Here, `return` statement at line 5 is within the potential scope of `one` and thus inhibits guaranteed copy elision.
-
-<xmp line-numbers="on">
-widget test() {
-  widget one;
-  if (toss_a_coin()) return one;  //!
-  widget two;
-  return two;
-}
-</xmp>
-
-- ✗ Move or copy elision at lines 3 and 5
-- ✓ Move or copy elision at line 3. Guaranteed copy elision at line 5
-
-### Example 8 ### {#ex-8}
-
-Constructing, setting up and passing an object as a parameter using an immediately invoked lambda expression (`p` is directly initialized under the name of `w`).
-
-<xmp line-numbers="on">
-void consume_widget(widget p);
-
-void test(int x) {
-  int y = process(x);
-  consume_widget([&] {
-    auto w = widget(x);
-    w.set_y(y);
-    return w;
-  }());
-}
-</xmp>
-
-- ✗ Move or copy elision at line 8. No additional copies or moves needed for initialization of `p`
-- ✓ Guaranteed copy elision at line 8. No additional copies or moves needed for initialization of `p`
-
-### Example 9 ### {#ex-9}
+### Example 12 ### {#ex-12}
 
 Guaranteed copy elision will be unaffected by a nested class, a lambda capture and a discarded `return` statement.
 
@@ -331,34 +385,27 @@ widget test() {
 }
 </xmp>
 
-- ✗ Move or copy elision at line 6
-- ✓ Guaranteed copy elision at line 6
+- ✗ Move (possibly elided) at line 6
+- ✓ No copies or moves needed at line 6 ("guaranteed NRVO")
 
-### Example 10 ### {#ex-10}
+### Example 13 ### {#ex-13}
 
-Guaranteed copy elision will be allowed in constant evaluation context, and will be guaranteed when possible.
+Guaranteed copy elision will be required in constant evaluation context.
 
 <xmp line-numbers="on">
-constexpr widget test1() {
+consteval widget test() {
   widget x;
   if (…) return x;
   widget y;
   return y;
 }
-constinit widget z = test1();
-
-consteval std::mutex test2() {
-  std::mutex x;
-  if (…) return x;
-  std::mutex y;
-  return y;
-}
+constinit widget z = test();
 </xmp>
 
-- ✗ Move at lines 3 and 5 (copy elision is not allowed), error at lines 11 and 13 (copy elision is not allowed)
-- ✓ Guaranteed copy elision at lines 5 and 13, move or copy elision at line 3, error at line 11
+- ✗ Move at lines 3 and 5 (copy elision is not allowed)
+- ✓ Move at line 3 (copy elision is not allowed). No copies or moves needed at line 5 ("guaranteed NRVO")
 
-### Example 11 ### {#ex-11}
+### Example 14 ### {#ex-14}
 
 <xmp line-numbers="on">
 void foo();  // throws a widget
@@ -373,12 +420,12 @@ widget test() {
 }
 </xmp>
 
-- ✗ Copy or copy elision at line 6 (<a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a>). Move or copy elision at line 8
-- ✓ Copy or copy elision at line 6 (<a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a>). Guaranteed copy elision at line 8
+- ✗ Copy (possibly elided, <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a>) at line 6. Move (possibly elided) at line 8
+- ✓ Copy (possibly elided, <a href="http://eel.is/c++draft/class.copy.elision#1.4">[class.copy.elision]/(1.4)</a>) at line 6. No copies or moves needed at line 8 ("guaranteed NRVO")
 
 See also: [[#req-value-exeptions]]
 
-### Example 12 ### {#ex-12}
+### Example 15 ### {#ex-15}
 
 <xmp line-numbers="on">
 widget test() {
@@ -390,11 +437,11 @@ widget test() {
 </xmp>
 
 - ✗ Move at lines 3 and 5 (copy elision in not allowed, but implementations perform copy elision in this case anyway)
-- ✓ Move or copy elision at line 3. Guaranteed copy elision at line 5
+- ✓ Move (possibly elided) at line 3. No copies or moves needed at line 5 ("guaranteed NRVO")
 
 See also: [[#req-parentheses]]
 
-### Example 13 ### {#ex-13}
+### Example 16 ### {#ex-16}
 
 For trivially copyable types, a copy may still be introduced.
 
@@ -411,12 +458,12 @@ gadget test() {
 gadget y = test();
 </xmp>
 
-- ✗ Trivial copy or copy elision at line 8. An additional copy may be introduced. It is implementation-defined whether `x` and `y` name the same object and whether `y.p` dangles
-- ✓ Guaranteed copy elision at line 8. An additional copy may be introduced. It is implementation-defined whether `x` and `y` name the same object and whether `y.p` dangles
+- ✗ Trivial copy (possibly elided) at line 8. An additional copy may be introduced. It is implementation-defined whether `x` and `y` name the same object and whether `y.p` dangles
+- ✓ No copies or moves needed at line 8 ("guaranteed NRVO"). An additional copy may be introduced. It is implementation-defined whether `x` and `y` name the same object and whether `y.p` dangles
 
 See also: [[#trivial-temporaries]]
 
-### Example 14 ### {#ex-14}
+### Example 17 ### {#ex-17}
 
 For non-class types, a copy may still be introduced.
 
@@ -434,11 +481,11 @@ signed char c = test();
 </xmp>
 
 - ✗ Trivial copy at line 5 (copy elision is not allowed). An additional copy may be introduced. It is implementation-defined whether `x` and `a` name the same object
-- ✓ Guaranteed copy elision at line 5. An additional copy may be introduced. It is implementation-defined whether `x` and `a` name the same object
+- ✓ No copies or moves needed at line 5 ("guaranteed NRVO"). An additional copy may be introduced. It is implementation-defined whether `x` and `a` name the same object
 
 See also: [[#non-class]]
 
-### Example 15 ### {#ex-15}
+### Example 18 ### {#ex-18}
 
 <xmp line-numbers="on">
 template <bool B>
@@ -451,10 +498,10 @@ widget test() {
 }
 </xmp>
 
-- ✗ Move or copy elision at line 7
-- ✓ In the instantiation where `B == false`, guaranteed copy elision at line 7. In the instantiation where `B == true`, move or copy elision at line 7
+- ✗ Move (possibly elided) at line 7
+- ✓ In the instantiation where `B == false`, no copies or moves are needed at line 7 ("guaranteed NRVO"). In the instantiation where `B == true`, move (possibly elided) at line 7
 
-### Example 16 ### {#ex-16}
+### Example 19 ### {#ex-19}
 
 <xmp line-numbers="on">
 const volatile widget foo() {
@@ -483,27 +530,27 @@ void baz() {
 }
 </xmp>
 
-- ✗ Move or copy elision at lines 4 and 13. Move at line 16 (copy elision is not allowed)
-- ✓ Guaranteed copy elision at lines 4 and 13. Move at line 16 (copy elision is not allowed)
+- ✗ Move (possibly elided) at lines 4 and 13. Copy at line 16 (copy elision and implicit move are not allowed)
+- ✓ No copies or moves needed at lines 4 and 13 ("guaranteed NRVO"). Copy at line 16 (copy elision and implicit move are not allowed)
 
-### Example 17 ### {#ex-17}
+### Example 20 ### {#ex-20}
 
 <xmp line-numbers="on">
 extern widget x;
 
-widget foo() {
+widget test() {
   widget y;
   if (&x == &y) {  // true
-    throw y;
+    throw 0;
   }
   return y;
 }
 
-widget x = foo();
+widget x = test();
 </xmp>
 
-- ✗ Move or copy elision at line 8
-- ✓ Guaranteed copy elision at line 8
+- ✗ Move (possibly elided) at line 8
+- ✓ No copies or moves needed at line 8 ("guaranteed NRVO")
 
 # Proposed wording # {#wording}
 
@@ -739,7 +786,7 @@ There are multiple issues with current wording for copy elision. While <a href="
 
 ### Parentheses are now allowed around the variable name ### {#req-parentheses}
 
-See [[#ex-12]]. `x` is considered a [$return variable|return variable$], and `y` a [$potential return variable$].
+See [[#ex-15]]. `x` is considered a [$return variable|return variable$], and `y` a [$potential return variable$].
 
 Meanwhile, at the time of writing, copy elision is not allowed for parenthesized variables.
 
@@ -854,7 +901,7 @@ Currently, 4 scenarios are possible:
 
 With this proposal accepted, only scenarios 1 and 2 are possible.
 
-See also: [[#ex-13]]
+See also: [[#ex-16]]
 
 ## What about copy elision for non-class types? ## {#non-class}
 
@@ -886,7 +933,7 @@ While `x` and `y` represent the same object "in the metal", they name different 
 
 The proposed wording suggests being more honest in this regard by saying that a function with object return type always has a result object, and then by allowing non-class object types to participate in copy elision on equal rights with trivially-copyable objects.
 
-See also: [[#ex-14]]
+See also: [[#ex-17]]
 
 <blockquote class="issue">
 Should copy elision for non-class types belong to a separate proposal?
@@ -960,7 +1007,27 @@ widget* bar() {
 
 Accounting for such cases will lead to pessimizations for some implementations.
 
-## Implementing the proposal: how to deal with exceptions? ## {#implementation-exceptions}
+## Are the proposed changes source or ABI breaking? ## {#abi}
+
+Propored changes *can break* constant expressions that rely on effects of the copy-initialization and destruction that are proposed to be elided. The defect report [[CWG2278]], requiring that copy elision is not performed in constant expressions, has been presented in March, 2018. However, relying on the effects of copy-initialization and destruction in constant expressions is considered exotic, and real-world code breakage is deemed to be minimal.
+
+The proposal prohibits some corner-case copy elision ([[#req-lambda]]), which was most probably a defect. Note that previously, copy elision could not be relied upon by portable programs.
+
+The proposal allows some new cases of copy elision described in previous sub-sections. Programs that relied on copy elision not being performed there (corner-case scenarios) will no longer be valid.
+
+The proposal is *not* ABI-breaking, because, in all known implementations, whether NRVO is performed for a function does not impact its calling convention.
+
+## What are the costs associated with the proposed changes? ## {#costs}
+
+There is no runtime cost associated with the proposed copy elision, because storage for the return object is allocated on stack before the function body starts executing, in all known implementations.
+
+The proposal will make declarations of local variables with automatic storage duration context-dependent: storage of a variable will depend on `return` statements in its potential scope. However, this analysis is local and purely syntactic. The impact on compilation times is thus deemed to be minimal.
+
+Compilers that already perform NRVO will enable it (or at least the required part of it) in all compilation modes. The proposal might even have a positive impact on compilation time, because such implementations will not have to check whether copy-initialization on the return type can be performed.
+
+# Implementation experience # {#implementation}
+
+## How to deal with exceptions? ## {#implementation-exceptions}
 
 If the `return rv;` statement is executed, but the destruction of a local variable throws, we may need to destroy the return variable. Some popular compilers, such as GCC and Clang, fail to call the destructor for the return variable in such cases (as of the time of writing) when they choose to perform copy elision:
 
@@ -1046,6 +1113,8 @@ int main() {
 }
 </xmp>
 
+## An exception-safe implementation strategy ## {#implementation-strategy}
+
 All possible "exceptional" cases can be grouped into two categories:
 
 - If the variable, which destruction throws, is defined *inside* the potential scope of the return variable, we need to revert the effects of the `return rv;` statement, and not destroy the variable right away
@@ -1116,24 +1185,6 @@ std::vector<int> test() {
   return result;
 }
 </xmp>
-
-## Are the proposed changes source or ABI breaking? ## {#abi}
-
-Propored changes *can break* constant expressions that rely on effects of the copy-initialization and destruction that are proposed to be elided. The defect report [[CWG2278]], requiring that copy elision is not performed in constant expressions, has been presented in March, 2018. However, relying on the effects of copy-initialization and destruction in constant expressions is considered exotic, and real-world code breakage is deemed to be minimal.
-
-The proposal prohibits some corner-case copy elision ([[#req-lambda]]), which was most probably a defect. Note that previously, copy elision could not be relied upon by portable programs.
-
-The proposal allows some new cases of copy elision described in previous sub-sections. Programs that relied on copy elision not being performed there (corner-case scenarios) will no longer be valid.
-
-The proposal is *not* ABI-breaking, because, in all known implementations, whether NRVO is performed for a function does not impact its calling convention.
-
-## What are the costs associated with the proposed changes? ## {#costs}
-
-There is no runtime cost associated with the proposed copy elision, because storage for the return object is allocated on stack before the function body starts executing, in all known implementations.
-
-The proposal will make declarations of local variables with automatic storage duration context-dependent: storage of a variable will depend on `return` statements in its potential scope. However, this analysis is local and purely syntactic. The impact on compilation times is thus deemed to be minimal.
-
-Compilers that already perform NRVO will enable it (or at least the required part of it) in all compilation modes. The proposal might even have a positive impact on compilation time, because such implementations will not have to check whether copy-initialization on the return type can be performed.
 
 # Alternative solutions # {#alternatives}
 
