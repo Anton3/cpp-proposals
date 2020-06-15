@@ -1,13 +1,13 @@
 <pre class='metadata'>
 Title: Guaranteed copy elision for return variables
-Shortname: D2025
+Shortname: P2025
 Revision: 1
 Audience: EWG, CWG
 Status: D
 Group: WG21
 URL:
-!Current Source: <a href="https://github.com/Anton3/cpp-proposals/blob/master/draft/d2025r1.bs">https://github.com/Anton3/cpp-proposals/blob/master/draft/d2025r1.bs</a>
-!Current: <a href="https://github.com/Anton3/cpp-proposals/blob/master/draft/d2025r1.html">https://github.com/Anton3/cpp-proposals/blob/master/draft/d2025r1.html</a>
+!Current Source: <a href="https://github.com/Anton3/cpp-proposals/blob/master/published/p2025r1.bs">https://github.com/Anton3/cpp-proposals/blob/master/published/p2025r1.bs</a>
+!Current: <a href="https://github.com/Anton3/cpp-proposals/blob/master/published/p2025r1.html">https://github.com/Anton3/cpp-proposals/blob/master/published/p2025r1.html</a>
 Editor: Anton Zhilin, antonyzhilin@gmail.com
 Markup Shorthands: markdown yes, biblio yes, markup yes, dfn yes
 Default Highlight: c++
