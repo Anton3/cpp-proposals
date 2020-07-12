@@ -17,5 +17,6 @@ To view any of the proposals in the browser, find its HTML on GitHub and paste t
 
 | ID      | Name                                             | Description                                                  | Link                                                         |
 | ------- | ------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| P2025R0 | Guaranteed copy elision for named return objects | Guaranteed copy elision for local variables being returned from a function (a.k.a. NRVO) | [Link](https://rawcdn.githack.com/Anton3/cpp-proposals/db611c48ca00752969ea03f2d39ef77e5a11e132/draft/d2025r0.html)
-| D2025R1 | Guaranteed copy elision for named return objects | Guaranteed copy elision for local variables being returned from a function (a.k.a. NRVO) | [Link](https://raw.githack.com/Anton3/cpp-proposals/master/draft/d2025r1.html) |
+| P2025R0 | Guaranteed copy elision for named return objects | Guaranteed copy elision for local variables being returned from a function | [Link](https://rawcdn.githack.com/Anton3/cpp-proposals/db611c48ca00752969ea03f2d39ef77e5a11e132/draft/d2025r0.html)
+| P2025R1 | Guaranteed copy elision for return variables | Guaranteed copy elision for local variables being returned from a function, a.k.a. "guaranteed NRVO". | [Link](https://rawcdn.githack.com/Anton3/cpp-proposals/1244583dcc326519134d46a5c8f27b2735fb7904/published/p2025r1.html)
+| D2025R2 | Guaranteed copy elision for return variables | Guaranteed copy elision for local variables being returned from a function, a.k.a. "guaranteed NRVO". | [Link](https://raw.githack.com/Anton3/cpp-proposals/master/draft/d2025r2.html) |
