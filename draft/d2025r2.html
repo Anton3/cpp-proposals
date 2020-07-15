@@ -2027,14 +2027,14 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
    <p>Add new sections in <a href="http://eel.is/c++draft/class.copy.elision">[class.copy.elision]</a>:</p>
    <blockquote> A <code class="highlight"><c- k>return</c-></code> (<a href="http://eel.is/c++draft/stmt.return">[stmt.return]</a>) or <code class="highlight"><c- k>co_return</c-></code> (<a href="http://eel.is/c++draft/stmt.return.coroutine">[stmt.return.coroutine]</a>) statement <em>R</em> <dfn class="dfn-paneled" data-dfn-type="abstract-op" data-export data-lt="to directly observe a variable" id="abstract-opdef-to-directly-observe-a-variable">directly observes</dfn> a variable <em>V</em> if the potential scope (<a href="http://eel.is/c++draft/basic.scope">[basic.scope]</a>) of <em>V</em> includes <em>R</em> and <em>V</em> is declared in the body or <em>parameter-declaration-clause</em> of the innermost enclosing function or <em>lambda-expression</em> of <em>R</em>. If, additionally, the operand of <em>R</em> is a (possibly parenthesized) <em>id-expression</em> designating <em>V</em>, then <em>R</em> <dfn class="dfn-paneled" data-dfn-type="abstract-op" data-export data-lt="to return a variable" id="abstract-opdef-to-return-a-variable">returns</dfn> the variable <em>V</em>. </blockquote>
    <blockquote>
-     A variable with automatic storage duration is called a <dfn class="dfn-paneled" data-dfn-type="abstract-op" data-export id="abstract-opdef-potential-return-variable">potential return variable</dfn> when all of the following conditions are satisfied: 
+     A local variable is called a <dfn class="dfn-paneled" data-dfn-type="abstract-op" data-export id="abstract-opdef-potential-return-variable">potential return variable</dfn> when all of the following conditions are satisfied: 
     <ul>
      <li data-md>
-      <p>the variable is not a function parameter,</p>
+      <p>the variable is not explicitly declared <code class="highlight"><c- k>static</c-></code>, <code class="highlight"><c- n>thread_</c->­<c- n>local</c-></code>, or <code class="highlight"><c- k>extern</c-></code>,</p>
      <li data-md>
       <p>the type of the variable is an object type, is not <code class="highlight"><c- k>volatile</c-></code>-qualified, and is the same (ignoring cv-qualification) as the return type of the immediately enclosing function or <em>lambda-expression</em>, and</p>
      <li data-md>
-      <p>at least one non-discarded (<a href="http://eel.is/c++draft/stmt.if">[stmt.if]</a>) <code class="highlight"><c- k>return</c-></code> statement <a data-link-type="abstract-op" href="#abstract-opdef-to-return-a-variable" id="ref-for-abstract-opdef-to-return-a-variable②">returns</a> the variable. [ <em>Note:</em> The enclosing function cannot be a coroutine. — <em>end note</em> ]</p>
+      <p>at least one non-discarded (<a href="http://eel.is/c++draft/stmt.if">[stmt.if]</a>) <code class="highlight"><c- k>return</c-></code> statement <a data-link-type="abstract-op" href="#abstract-opdef-to-return-a-variable" id="ref-for-abstract-opdef-to-return-a-variable②">returns</a> the variable. [ <em>Note:</em> The enclosing function cannot be a coroutine. The variable cannot be a function parameter. — <em>end note</em> ]</p>
     </ul>
     <p>If additionally, all non-discarded <code class="highlight"><c- k>return</c-></code> statements, which <a data-link-type="abstract-op" href="#abstract-opdef-to-directly-observe-a-variable" id="ref-for-abstract-opdef-to-directly-observe-a-variable">directly observe</a> the variable, <a data-link-type="abstract-op" href="#abstract-opdef-to-return-a-variable" id="ref-for-abstract-opdef-to-return-a-variable③">return</a> it, then the variable is called a <dfn class="dfn-paneled" data-dfn-type="abstract-op" data-export id="abstract-opdef-return-variable">return variable</dfn>.</p>
    </blockquote>
@@ -2159,14 +2159,16 @@ See also <a href="#trivial-temporaries">§ 6.3 What about trivially copyable t
    </blockquote>
    <p>Modify <a href="http://eel.is/c++draft/basic.stc.auto#1">[basic.stc.auto]/1</a>:</p>
    <blockquote>
-     Block-scope variables not explicitly declared <code class="highlight"><c- k>static</c-></code>, <code class="highlight"><c- n>thread_</c->­<c- n>local</c-></code>, or <code class="highlight"><c- k>extern</c-></code> 
+    <del>Block-scope</del>
+    <ins>Local</ins>
+     variables not explicitly declared <code class="highlight"><c- k>static</c-></code>, <code class="highlight"><c- n>thread_</c->­<c- n>local</c-></code>, or <code class="highlight"><c- k>extern</c-></code> 
     <ins>(other than <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①②">return variables</a> (<a href="http://eel.is/c++draft/class.copy.elision">[class.copy.elision]</a>))</ins>
      have automatic storage duration. The storage for these entities lasts until the block in which they are created exits. 
    </blockquote>
    <p>Modify <a href="http://eel.is/c++draft/stmt.return#2">[stmt.return]/2</a>:</p>
    <blockquote>
      […] A <code class="highlight"><c- k>return</c-></code> statement with any other operand shall be used only in a function whose return type is not cv <code class="highlight"><c- b>void</c-></code>; the <code class="highlight"><c- k>return</c-></code> statement initializes the glvalue result or prvalue result object of the (explicit or implicit) function call by copy-initialization from the operand 
-    <ins>(except when copy elision applies (<a href="http://eel.is/c++draft/class.copy.elision">[class.copy.elision]</a>))</ins>
+    <ins>(except when the statement <a data-link-type="abstract-op" href="#abstract-opdef-to-return-a-variable" id="ref-for-abstract-opdef-to-return-a-variable⑦">returns</a> a <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①③">return variable</a> (<a href="http://eel.is/c++draft/class.copy.elision">[class.copy.elision]</a>))</ins>
     . […] 
    </blockquote>
    <p>Modify <a href="http://eel.is/c++draft/stmt.dcl#2">[stmt.dcl]/2</a>:</p>
@@ -2210,7 +2212,7 @@ CWG2434 (<a href="https://raw.githack.com/zygoloid/wg21papers/master/to-review/c
 See also <a href="#non-class">§ 6.4 What about copy elision for non-class types?</a>. </blockquote>
    <h2 class="heading settled" data-level="6" id="faq"><span class="secno">6. </span><span class="content">Discussion</span><a class="self-link" href="#faq"></a></h2>
    <h3 class="heading settled" data-level="6.1" id="term"><span class="secno">6.1. </span><span class="content">Is "return variable" a good term choice?</span><a class="self-link" href="#term"></a></h3>
-   <blockquote class="issue" id="issue-9ca2bd58"><a class="self-link" href="#issue-9ca2bd58"></a> "<a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①③">Return variable</a>" might not be the best term for our purposes. </blockquote>
+   <blockquote class="issue" id="issue-9ca2bd58"><a class="self-link" href="#issue-9ca2bd58"></a> "<a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①④">Return variable</a>" might not be the best term for our purposes. </blockquote>
    <p>A previous revision of this proposal (R0) used the term "named return object". That term choice was unfortunate, because it refers to a variable, not to an object. And a variable cannot be "unnamed", so that was excessive.</p>
    <p>Some alternative choices:</p>
    <ul>
@@ -2226,7 +2228,7 @@ See also <a href="#non-class">§ 6.4 What about copy elision for non-class typ
    <h3 class="heading settled" data-level="6.2" id="req-change"><span class="secno">6.2. </span><span class="content">Have requirements for copy elision changed?</span><a class="self-link" href="#req-change"></a></h3>
    <p>There are multiple issues with current wording for copy elision. While <a href="http://eel.is/c++draft/class.copy.elision#3">[class.copy.elision]/3</a> has recently been updated (<a data-link-type="biblio" href="#biblio-p0527r1">[P0527R1]</a>, <a data-link-type="biblio" href="#biblio-p1155r3">[P1155R3]</a>, <a data-link-type="biblio" href="#biblio-p1825r0">[P1825R0]</a>), <a href="http://eel.is/c++draft/class.copy.elision#1">[class.copy.elision]/1</a> has not. Proposed wording cleans up those issues.</p>
    <h4 class="heading settled" data-level="6.2.1" id="req-parentheses"><span class="secno">6.2.1. </span><span class="content">Parentheses are now allowed around the variable name</span><a class="self-link" href="#req-parentheses"></a></h4>
-   <p>See <a href="#ex-15">§ 4.1.15 Example 15</a>. <code class="highlight"><c- n>x</c-></code> is considered a <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①④">return variable</a>, and <code class="highlight"><c- n>y</c-></code> a <a data-link-type="abstract-op" href="#abstract-opdef-potential-return-variable" id="ref-for-abstract-opdef-potential-return-variable①">potential return variable</a>.</p>
+   <p>See <a href="#ex-15">§ 4.1.15 Example 15</a>. <code class="highlight"><c- n>x</c-></code> is considered a <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①⑤">return variable</a>, and <code class="highlight"><c- n>y</c-></code> a <a data-link-type="abstract-op" href="#abstract-opdef-potential-return-variable" id="ref-for-abstract-opdef-potential-return-variable①">potential return variable</a>.</p>
    <p>Meanwhile, at the time of writing, copy elision is not allowed for parenthesized variables.</p>
    <p>Implementation divergence has been discovered. Clang and MSVC currently does perform copy elision there, but GCC does not. Consequently, this change may be delivered in a Defect Report.</p>
    <h4 class="heading settled" data-level="6.2.2" id="req-lambda"><span class="secno">6.2.2. </span><span class="content">Copy elision is no longer allowed for lambda captures</span><a class="self-link" href="#req-lambda"></a></h4>
@@ -2333,7 +2335,7 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
   <c- k>return</c-> <c- n>A</c-><c- p>(</c-><c- mi>2</c-> <c- o>+</c-> <c- n>global</c-><c- p>.</c-><c- n>x</c-><c- p>);</c->
 <c- p>}</c->
 </pre>
-   <p>Under this proposal, <code class="highlight"><c- n>local</c-></code> and <code class="highlight"><c- n>global</c-></code> can be assumed to be distinct too, for a different reason. Inside <code class="highlight"><c- n>A</c-> <c- n>global</c-> <c- o>=</c-> <c- n>foo</c-><c- p>();</c-></code>, <code class="highlight"><c- n>global</c-></code> and <code class="highlight"><c- n>local</c-></code> are guaranteed to denote the same object, because <code class="highlight"><c- n>local</c-></code> is a <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①⑤">return variable</a>. Before <code class="highlight"><c- n>foo</c-></code> returns, the value of <code class="highlight"><c- n>local</c-><c- p>.</c-><c- n>x</c-></code> is accessed through glvalue <code class="highlight"><c- n>global</c-><c- p>.</c-><c- n>x</c-></code> that is not obtained from <code class="highlight"><c- n>local</c-></code>, thus the value of <code class="highlight"><c- n>global</c-><c- p>.</c-><c- n>x</c-></code> is unspecified.</p>
+   <p>Under this proposal, <code class="highlight"><c- n>local</c-></code> and <code class="highlight"><c- n>global</c-></code> can be assumed to be distinct too, for a different reason. Inside <code class="highlight"><c- n>A</c-> <c- n>global</c-> <c- o>=</c-> <c- n>foo</c-><c- p>();</c-></code>, <code class="highlight"><c- n>global</c-></code> and <code class="highlight"><c- n>local</c-></code> are guaranteed to denote the same object, because <code class="highlight"><c- n>local</c-></code> is a <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①⑥">return variable</a>. Before <code class="highlight"><c- n>foo</c-></code> returns, the value of <code class="highlight"><c- n>local</c-><c- p>.</c-><c- n>x</c-></code> is accessed through glvalue <code class="highlight"><c- n>global</c-><c- p>.</c-><c- n>x</c-></code> that is not obtained from <code class="highlight"><c- n>local</c-></code>, thus the value of <code class="highlight"><c- n>global</c-><c- p>.</c-><c- n>x</c-></code> is unspecified.</p>
    <p>In summary, code which would require invalidation of optimizations for its correctness is kept incorrect.</p>
    <h4 class="heading settled" data-level="6.5.1" id="escape-analysis"><span class="secno">6.5.1. </span><span class="content">Complication of escape analysis</span><a class="self-link" href="#escape-analysis"></a></h4>
    <p>Previously, implementations could choose to never perform copy elision (<a href="http://eel.is/c++draft/class.copy.elision#1.1">[class.copy.elision]/(1.1)</a>) for some non-trivially-copyable class types. For these classes, the implementation could assume that the address of a local variable never escapes:</p>
@@ -2592,7 +2594,7 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
    <p>However, what if <code class="highlight"><c- n>build</c-></code> saves a pointer to the returned object, which is then used in <code class="highlight"><c- n>rebuild</c-></code>? Then the <code class="highlight"><c- n>b</c-><c- p>.</c-><c- n>rebuild</c-><c- p>()</c-></code> call will try to reach for <code class="highlight"><c- n>w</c-></code>, which will lead to undefined behavior.</p>
    <p>While the compiler can in some cases analyze the control flow and usage patterns (usually after inlining is performed), this is impossible in general. (This is why a previous attempt at "guaranteeing NRVO" was shut down, see <a data-link-type="biblio" href="#biblio-cwg2278">[CWG2278]</a>.) The limitations of the proposed solution describe the cases where correctness can always be guaranteed without overhead and non-local reasoning.</p>
    <h3 class="heading settled" data-level="8.3" id="explicit-mark"><span class="secno">8.3. </span><span class="content">Require an explicit mark for return variables</span><a class="self-link" href="#explicit-mark"></a></h3>
-   <p>As an alternative, <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①⑥">return variables</a> could require a specific attribute or a mark of some sort in order to be eligible for guaranteed copy elision:</p>
+   <p>As an alternative, <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①⑦">return variables</a> could require a specific attribute or a mark of some sort in order to be eligible for guaranteed copy elision:</p>
 <pre class="highlight"><c- n>widget</c-> <c- nf>setup_widget</c-><c- p>(</c-><c- b>int</c-> <c- n>x</c-><c- p>)</c-> <c- p>{</c->
   <c- n>widget</c-> <c- n>w</c-> <c- p>[[</c-><c- n>nrvo</c-><c- p>]];</c->
   <c- n>w</c-><c- p>.</c-><c- n>set_x</c-><c- p>(</c-><c- n>x</c-><c- p>);</c->
@@ -2601,7 +2603,7 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
 </pre>
    <p>The mark would only be applicable to non-trivially-copyable return types.</p>
    <p>The benefit of requiring a mark is that the compiler would not have to determine for each local variable whether it could be a return variable. However, the cost of the compile-time checks is deemed to be low, while there would be some language complexity cost associated with the mark.</p>
-   <p>Another benefit would be that the reader of the code would be able to see at a glance that <code class="highlight"><c- n>w</c-></code> is a <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①⑦">return variable</a> without reading further.</p>
+   <p>Another benefit would be that the reader of the code would be able to see at a glance that <code class="highlight"><c- n>w</c-></code> is a <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①⑧">return variable</a> without reading further.</p>
    <p>The arguments against requiring an explicit mark are:</p>
    <ul>
     <li data-md>
@@ -2727,7 +2729,7 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
 <c- k>struct</c-> <c- nl>pin</c-> <c- p>:</c-> <c- n>__pin_holder</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-><c- p>,</c-> <c- n>__pin_non_movable</c-> <c- p>{</c-> <c- p>};</c->
 </pre>
    <h3 class="heading settled" data-level="9.6" id="optional-mark"><span class="secno">9.6. </span><span class="content">Add an optional mark <code class="highlight"><c- p>[[</c-><c- n>nrvo_verify</c-><c- p>]]</c-></code></span><a class="self-link" href="#optional-mark"></a></h3>
-   <p>Sometimes it’s useful to assert that a variable is a <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①⑧">return variable</a> (and of a non-trivially-copyable type, otherwise it is useless). It would allow to catch subtle bugs caused by evolution of code.</p>
+   <p>Sometimes it’s useful to assert that a variable is a <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①⑨">return variable</a> (and of a non-trivially-copyable type, otherwise it is useless). It would allow to catch subtle bugs caused by evolution of code.</p>
    <p>Before:</p>
 <pre class="highlight"><c- n>widget</c-> <c- nf>frobnicate</c-><c- p>()</c-> <c- p>{</c->
   <c- n>widget</c-> <c- n>result</c-> <c- p>[[</c-><c- n>nrvo_verify</c-><c- p>]];</c->
@@ -2773,7 +2775,7 @@ Note that the same result can be achieved using <a href="#pin">§ 9.5 std::pin
     <li data-md>
      <p>For a comma operator, it can be overloaded. We could allow it in the non-overloaded case (<a data-link-type="biblio" href="#biblio-cwg2125">[CWG2125]</a>)</p>
     <li data-md>
-     <p>A ternary operator could be treated as an <code class="highlight"><c- k>if</c-></code> statement, at which point <code class="highlight"><c- n>x</c-></code> cannot be a <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable①⑨">return variable</a> (another <code class="highlight"><c- k>return</c-></code> in scope), but we could allow it to be a <a data-link-type="abstract-op" href="#abstract-opdef-potential-return-variable" id="ref-for-abstract-opdef-potential-return-variable②">potential return variable</a>, if <code class="highlight"><c- n>x</c-></code> is not implicitly converted</p>
+     <p>A ternary operator could be treated as an <code class="highlight"><c- k>if</c-></code> statement, at which point <code class="highlight"><c- n>x</c-></code> cannot be a <a data-link-type="abstract-op" href="#abstract-opdef-return-variable" id="ref-for-abstract-opdef-return-variable②⓪">return variable</a> (another <code class="highlight"><c- k>return</c-></code> in scope), but we could allow it to be a <a data-link-type="abstract-op" href="#abstract-opdef-potential-return-variable" id="ref-for-abstract-opdef-potential-return-variable②">potential return variable</a>, if <code class="highlight"><c- n>x</c-></code> is not implicitly converted</p>
    </ul>
    <p>All in all, it seems that the benefits are not worth the additional complexity.</p>
    <h2 class="heading settled" data-level="10" id="acknowledgements"><span class="secno">10. </span><span class="content">Acknowledgements</span><a class="self-link" href="#acknowledgements"></a></h2>
@@ -2973,6 +2975,7 @@ Note that the same result can be achieved using <a href="#pin">§ 9.5 std::pin
     <li><a href="#ref-for-abstract-opdef-to-return-a-variable①">4. Proposed solution</a>
     <li><a href="#ref-for-abstract-opdef-to-return-a-variable②">5.1. Definitions</a> <a href="#ref-for-abstract-opdef-to-return-a-variable③">(2)</a> <a href="#ref-for-abstract-opdef-to-return-a-variable④">(3)</a>
     <li><a href="#ref-for-abstract-opdef-to-return-a-variable⑤">5.2. The behavior of return variables</a> <a href="#ref-for-abstract-opdef-to-return-a-variable⑥">(2)</a>
+    <li><a href="#ref-for-abstract-opdef-to-return-a-variable⑦">5.3. Cross-references</a>
    </ul>
   </aside>
   <aside class="dfn-panel" data-for="abstract-opdef-potential-return-variable">
@@ -2989,13 +2992,13 @@ Note that the same result can be achieved using <a href="#pin">§ 9.5 std::pin
     <li><a href="#ref-for-abstract-opdef-return-variable">2. Introduction</a>
     <li><a href="#ref-for-abstract-opdef-return-variable①">5.1. Definitions</a> <a href="#ref-for-abstract-opdef-return-variable②">(2)</a>
     <li><a href="#ref-for-abstract-opdef-return-variable③">5.2. The behavior of return variables</a> <a href="#ref-for-abstract-opdef-return-variable④">(2)</a> <a href="#ref-for-abstract-opdef-return-variable⑤">(3)</a> <a href="#ref-for-abstract-opdef-return-variable⑥">(4)</a> <a href="#ref-for-abstract-opdef-return-variable⑦">(5)</a> <a href="#ref-for-abstract-opdef-return-variable⑧">(6)</a> <a href="#ref-for-abstract-opdef-return-variable⑨">(7)</a> <a href="#ref-for-abstract-opdef-return-variable①⓪">(8)</a>
-    <li><a href="#ref-for-abstract-opdef-return-variable①①">5.3. Cross-references</a> <a href="#ref-for-abstract-opdef-return-variable①②">(2)</a>
-    <li><a href="#ref-for-abstract-opdef-return-variable①③">6.1. Is "return variable" a good term choice?</a>
-    <li><a href="#ref-for-abstract-opdef-return-variable①④">6.2.1. Parentheses are now allowed around the variable name</a>
-    <li><a href="#ref-for-abstract-opdef-return-variable①⑤">6.5. What about the invalidation of optimizations?</a>
-    <li><a href="#ref-for-abstract-opdef-return-variable①⑥">8.3. Require an explicit mark for return variables</a> <a href="#ref-for-abstract-opdef-return-variable①⑦">(2)</a>
-    <li><a href="#ref-for-abstract-opdef-return-variable①⑧">9.6. Add an optional mark [[nrvo_verify]]</a>
-    <li><a href="#ref-for-abstract-opdef-return-variable①⑨">9.7. Allow copy elision for complex expressions</a>
+    <li><a href="#ref-for-abstract-opdef-return-variable①①">5.3. Cross-references</a> <a href="#ref-for-abstract-opdef-return-variable①②">(2)</a> <a href="#ref-for-abstract-opdef-return-variable①③">(3)</a>
+    <li><a href="#ref-for-abstract-opdef-return-variable①④">6.1. Is "return variable" a good term choice?</a>
+    <li><a href="#ref-for-abstract-opdef-return-variable①⑤">6.2.1. Parentheses are now allowed around the variable name</a>
+    <li><a href="#ref-for-abstract-opdef-return-variable①⑥">6.5. What about the invalidation of optimizations?</a>
+    <li><a href="#ref-for-abstract-opdef-return-variable①⑦">8.3. Require an explicit mark for return variables</a> <a href="#ref-for-abstract-opdef-return-variable①⑧">(2)</a>
+    <li><a href="#ref-for-abstract-opdef-return-variable①⑨">9.6. Add an optional mark [[nrvo_verify]]</a>
+    <li><a href="#ref-for-abstract-opdef-return-variable②⓪">9.7. Allow copy elision for complex expressions</a>
    </ul>
   </aside>
 <script>/* script-dfn-panel */
