@@ -14,7 +14,7 @@ Default Highlight: c++
 Line Numbers: off
 Abstract:
   This proposal aims to provide guaranteed copy elision for common cases of local variables being returned from a function, a.k.a. "guaranteed NRVO".
-Date: 2020-07-11
+Date: 2021-03-14
 </pre>
 
 <style>
@@ -33,6 +33,17 @@ del {
   overflow-y: auto;
   clear: both;
 }
+.comparison {
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.comparison td {
+    text-align: center;
+}
+.comparison th:first-child {
+    text-align: right;
+}​
 </style>
 
 # Revision history # {#revision}
@@ -61,6 +72,12 @@ R1 (post-Prague):
 - Added the [[#optional-mark]] subsection
 - Added the [[#complex-expressions]] subsection
 - Added the [[#implementation]] section
+
+R2:
+
+- Expanded the [[#explicit-mark]] subsection
+- Expanded the [[#escape-analysis]] subsection
+- Minor wording changes
 
 # Introduction # {#introduction}
 
@@ -979,7 +996,7 @@ A foo() {
 }
 </xmp>
 
-Currently, copy elision is not guaranteed here and cannot make invalid code valid. `global` at line 10 can be assumed to have nothing common with local, e.g. `global` cannot be defined as `A global = foo();`. Compilers use this knowledge to optimize `foo` to the equivalent of:
+Currently, copy elision is not guaranteed here and cannot make invalid code valid. `global` at line 10 can be assumed to have nothing common with `local`, e.g. `global` cannot be defined as `A global = foo();`. Compilers use this knowledge to optimize `foo` to the equivalent of:
 
 <xmp>
 A foo() {
@@ -1026,7 +1043,9 @@ widget* bar() {
 }
 </xmp>
 
-Accounting for such cases will lead to pessimizations for some implementations.
+Accounting for such cases can lead to pessimizations for some implementations.
+
+However, I believe that in practice, this is a non-issue. No major compiler currently optimizes the example above assuming that `&x == bar()` is never `true`. Not (only) because the implementors just haven't gotten around to implementing this optimization. No known compiler has explicitly prohibited copy elision at the ABI level. Even though some compiler might have chosen not to perform copy elision in some cases, this has not been enforced ABI-compatible compilers. At this point, enabling this optimization would be an ABI-breaking change. No known compiler is willing to make this decision because of its low cost-benefit ratio.
 
 ## Are the proposed changes source or ABI breaking? ## {#abi}
 
@@ -1244,56 +1263,334 @@ widget setup_widget(int x) {
 
 However, it requires cooperation from `widget` and breaks when some of its other constructors accept an invocable parameter. We cannot implement this functionality in general.
 
-## "Guarantee NRVO" in more cases ## {#more-nrvo}
-
-<xmp>
-class builder {
-public:
-  builder();
-  widget build();
-  widget rebuild();
-  …
-};
-
-widget foo() {
-  builder b;
-  widget w = b.build();
-  if (…) return b.rebuild();
-  return w;
-}
-</xmp>
-
-Copy elision will **not** be guaranteed for `w`, according to this proposal. Meanwhile, one could say that it could be guaranteed: if the condition is true, then we could arrange it so that `w` (which is stored as the return object) is destroyed before `b.rebuild()` is called.
-
-However, what if `build` saves a pointer to the returned object, which is then used in `rebuild`? Then the `b.rebuild()` call will try to reach for `w`, which will lead to undefined behavior.
-
-While the compiler can in some cases analyze the control flow and usage patterns (usually after inlining is performed), this is impossible in general. (This is why a previous attempt at "guaranteeing NRVO" was shut down, see [[CWG2278]].) The limitations of the proposed solution describe the cases where correctness can always be guaranteed without overhead and non-local reasoning.
-
 ## Require an explicit mark for return variables ## {#explicit-mark}
 
-As an alternative, [$return variable|return variables$] could require a specific attribute or a mark of some sort in order to be eligible for guaranteed copy elision:
-
-<xmp>
-widget setup_widget(int x) {
-  widget w [[nrvo]];
-  w.set_x(x);
-  return w;
-}
-</xmp>
-
-The mark would only be applicable to non-trivially-copyable return types.
-
-The benefit of requiring a mark is that the compiler would not have to determine for each local variable whether it could be a return variable. However, the cost of the compile-time checks is deemed to be low, while there would be some language complexity cost associated with the mark.
-
-Another benefit would be that the reader of the code would be able to see at a glance that `w` is a [$return variable$] without reading further.
+As an alternative, [$return variable|return variables$] could require a mark of some sort in order to be eligible for guaranteed copy elision. The advantage of this approach is that the reader of the code is able to see at a glance when guaranteed copy elision is requested, because if unrelated `return` statements block guaranteed copy elision, the mark will trigger a compilation error.
 
 The arguments against requiring an explicit mark are:
 
 - The mark takes space and makes code less elegant
-- In the majority of cases, control flow is not exceedingly complex
-- If the objects of some class should not be moved, it is usually a good idea to make the class non-movable
-- `pin<T>` ([[#pin]]) could be used to protect against copying when it is important, but the type is movable
-- Without the mark, existing code can benefit from guaranteed copy elision
+- In the absence of control flow, an explicit mark might seem excessive
+- Without the mark, existing code can benefit from guaranteed copy elision, e.g. some function templates that only worked for movable types will start to work for non-movable types
+
+Let's review some of the available options.
+
+### Attribute ### {#explicit-mark-attribute}
+
+This is a non-option, because C++ attributes must be ignorable (i.e. removal of an attribute must produce a correct program with similar meaning), but in this case, the attribute would be required for returning variables of non-copyable, non-movable types.
+
+<xmp>
+std::mutex test() {
+  // std::mutex x;        // error at return
+  std::mutex x [[nrvo]];  // ok
+  return x;
+}
+</xmp>
+
+The same goes for attributes in other places.
+
+### A mark on the variable declaration ### {#explicit-mark-declaration}
+
+We can't use an attribute (see above), so we have to invent some new syntax consisting of punctuation and keywords.
+
+Because we are talking about a way the variable is returned, the most natural choice is to add a `return` declaration modifier somewhere. We must then decide where to place it:
+
+- Before the declarator:
+    - `return std::mutex x{};` — infeasible, because it's confusingly close to a `return` statement, while having a completely different meaning
+    - `return -> std::mutex x{};` — seems unnecessarily complex, together with other options involving additional punctuation
+- Between the declarator and the initializer:
+    - `std::mutex x return {};` — separating the declarator and the initializer seems wrong
+- After the initializer:
+    - `std::mutex x{} return;` — looks OK
+
+Attributes and multiple variables fit well into the picture:
+
+`std::mutex x{} return, y{} [[foo]];`
+
+Here is this syntax in context:
+
+<xmp>
+std::string test() {
+  std::string x return;
+  // if (…) return {};  // error
+  return x;
+}
+</xmp>
+
+### A mark on the `return` statement ### {#explicit-mark-return-statement}
+
+Syntax variants:
+
+- Keywords:
+    - `return explicit x;`
+- Punctuation:
+    - `return [x];` — compiler writers might object
+    - `return << x;`
+
+Here is this syntax in context:
+
+<xmp>
+std::string test() {
+  std::string x;
+  // if (…) return {};  // error
+  return explicit x;
+}
+</xmp>
+
+Let's compare this option against [[#explicit-mark-declaration]].
+
+Pros:
+
+- The annotated statement is what's affected by guaranteed copy elision (with the observable behavior that there's no copy or move)
+- The already complicated variable declaration is left untouched
+
+Cons:
+
+- When a single variable is returned multiple times, the mark will be duplicated on each of the return statements
+- I fail to suggest a syntax as fitting as the `return` keyword on the declaration
+
+### A syntax that unifies the variable declaration and the `return` statement ### {#explicit-mark-unified}
+
+For example, [$alias expression|alias expressions$]. The advantage here is maximum clarity, because it's a special language construct dedicated to this language feature. But alias expressions actually are a special case of *statement expressions*, and those aren't expected to be accepted any time soon. Additionally, this is arguably too loud of a syntax for a feature that is not groundbreaking.
+
+### Variable declaration at the function definition ### {#explicit-mark-declaration-at-function-definition}
+
+<xmp>
+auto test() -> return(widget x{}) {
+  foo(x);
+}
+</xmp>
+
+This approach has no advantages over [[#explicit-mark-declaration]], but is severely limited:
+
+- There can only be one return variable
+- This return variable must be initialized at the beginning of the function body
+
+### A mark on the function definition ### {#explicit-mark-function-definition}
+
+<xmp>
+std::string test();
+
+std::string test() return {
+  std::string x;
+  // if (…) return {};  // error
+  return x;
+}
+</xmp>
+
+This mark would require that every `return` statement in the function (which returns some variable?) returns a [$return variable$].
+
+Let's compare this approach to [[#explicit-mark-declaration]].
+
+Pros:
+
+- It's not needed to check whether a specific variable is marked, which might increase readability
+
+Cons:
+
+- It introduces a context. In different functions, the same declaration and `return` statement would have slightly different meaning
+- In a sufficiently complex function, the restriction on all `return` statements seems unnecessarily limiting
+
+### A mark on the function declaration ### {#explicit-mark-function-declaration}
+
+<xmp>
+std::string test() return;
+
+std::string test() return {
+  std::string x;
+  // if (…) return {};  // error
+  return x;
+}
+</xmp>
+
+This option is similar to [[#explicit-mark-function-definition]], except that it has a unique advantage compared to all the other solutions. Namely, we can make it affect ABI and enable guaranteed copy elision even for trivially copyable types:
+
+<xmp>
+int* p;
+
+int test() return {
+  int x = 42;
+  p = &x;
+  return x;
+}
+
+int y = test();  // p points to y
+</xmp>
+
+With this syntactic option, this is possible, but is it desired? Compilers are allowed to perform extra copies for trivially copyable types, because it results in faster code compared to the return slot approach. In the following example:
+
+<xmp>
+template <typename T>
+T foo() return {
+  T x = bar();
+  buz(x);
+  return x;
+}
+</xmp>
+
+Would we want to enforce guaranteed copy elision (at the cost of performance) if `T` turns out to be `int`? In my opinion, we normally wouldn't. This is a fairly niche feature, and when needed, `pin<T>` ([[#pin]]) can be used to protect against copying.
+
+### Optional mark ### {#optional-mark}
+
+A compromise approach between "requiring a mark" and "no mark" is to provide "guaranteed NRVO" by default, but allow placing a mark, which checks that the conditions are satisfied, in complex cases.
+
+Such a mark passes the test of ignorability and can be an attribute. However, because the sole meaning of existence of the mark is to guarantee copy elision (as opposed to best-effort, which is provided by default with "optional mark" approach), we will probably want it to be non-attribute. (`constinit` was made a non-attribute for the same reason.)
+
+The "optional mark" approach works with both [[#explicit-mark-declaration]] and [[#explicit-mark-return-statement]]:
+
+<xmp>
+widget foo() {
+  widget x;
+  return x;  // no copy-initialization
+}
+
+widget bar() {
+  widget y return;
+  while (…) {
+    …
+    if (…) {
+      // return baz();  // error
+    }
+    …
+  }
+  return y;  // no copy-initialization
+}
+
+widget baz() {
+  widget z;
+  if (…) {
+    // return baz();  // error
+  }
+  return explicit z;  // no copy-initialization
+}
+</xmp>
+
+By making the mark optional, we move omission of the mark into code style territory.
+
+### Trivially-copyables: discussion ### {#explicit-mark-trivially-copyables}
+
+Trivially copyable types are a pain in the neck of guaranteed copy elision. Especially so with an explicit mark: it seems to be enforcing guaranteed copy elision, when in reality it doesn't for trivially copyable types. (Setting aside [[#explicit-mark-function-declaration]].)
+
+It seems desirable to prohibit using trivially copyable types with this syntax:
+
+<xmp>
+int foo() {
+  int x = bar();
+  return explicit x;  // error: int is trivially copyable
+}
+</xmp>
+
+However, this is not really possible for the following reasons:
+
+1. It is implementation-defined whether some standard library types are trivially copyable. For example, `std::optional<int>` is trivially copyable under some, but not all, compilers. As a consequence, it will be implementation-defined whether code like this compiles:
+
+    <xmp>
+std::optional<int> foo() {
+  std::optional<int> x = bar();
+  return explicit x;
+}
+    </xmp>
+
+2. Function templates that wish to make use of the new feature will fail to be compiled for trivially copyable types:
+
+    <xmp>
+template <typename T>
+T foo() {
+  T x = bar();
+  buz(x);
+  return explicit x;
+}
+
+foo<int>();  // error
+             // even though I probably don't care whether the int is copied :(
+    </xmp>
+
+I suggest that instead of trying to enforce guaranteed copy elision for trivially copyable types, we treat guaranteed copy elision as a matter of *not calling a nontrivial or "heavy" copy or move constructor*. (In case the compiler decides to pass a "heavy" trivially copyable result by stack, it will have the means of doing so without inducing extra copies.)
+
+### Guarantee copy elision in more cases: discussion ### {#more-nrvo}
+
+A frequently used pattern, in which the proposed guaranteed copy elision will **not** apply, is when we initialize the return variable, do something with it, then:
+
+- if all goes well, we return the variable;
+- if something fails, we return a newly constructed result representing the failure.
+
+<xmp>
+std::optional<widget> foo() {
+  std::optional<widget> w return;
+  fill(w);
+  if (…) return {};
+  return w;
+}
+</xmp>
+
+Meanwhile, we could, in principle, perform guaranteed copy elision here: if the condition is true, then we could arrange it so that `w` (which is stored as the return object) is destroyed before the operand of `return {};` statement is evaluated.
+
+One issue is related to exceptions:
+
+<xmp>
+std::optional<widget> foo() {
+  std::optional<widget> w return;
+  fill(w);
+  try {
+    if (…) return bar();  // bar throws
+  } catch (...) {
+    return baz(w);
+  }
+  return w;
+}
+</xmp>
+
+We can protect against that by prohibiting the situation when the inner `return` statement is wrapped in a try block, which does not contain the return variable.
+
+More subtle issues arise due to the lifetime of `w` being ended early:
+
+<xmp>
+std::optional<widget> foo() {
+  std::optional<widget> w return;
+  gadget g{};
+  if (…) return bar();
+  return w;
+}
+</xmp>
+
+1. `w` could be used inside the `bar()` call
+2. `w` could be used inside `g`'s destructor
+3. side effects of `w`'s destruction occur before side effects of the `bar()` call
+
+We could guarantee copy elision in this case by requiring yet another mark, with the intent to make the user aware of these potential issues:
+
+<xmp>
+std::optional<widget> foo() {
+  std::optional<widget> w;
+  gadget g{};
+  if (…) return explicit bar();  // note the additional "explicit"
+  return explicit w;
+}
+</xmp>
+
+This extension can be pursued in a separate follow-up proposal.
+
+### A comparison table of explicit mark variants### {#explicit-mark-comparison}
+
+<table class="comparison">
+  <thead>
+    <th>
+    <th>The return variable<br>can be declared anywhere<br>in the function
+    <th>Multiple return variables<br>in same function<br>(in different scopes)
+    <th>Both return variables<br>and potential return<br>variables in the same function
+    <th>Prohibits a copy when<br>returning<br>trivially-copyables
+    <th>Allows statements<br>within an expression<br>(without lambdas)
+    <th>Allows existing code<br>to benefit from<br>guaranteed copy elision
+  </thead>
+  <tr><th>[[#explicit-mark-declaration|At variable declaration]]<td>✅<td>✅<td>✅<td>❌<td>❌<td>❌
+  <tr><th>[[#explicit-mark-return-statement|At return statement]]<td>✅<td>✅<td>✅<td>❌<td>❌<td>❌
+  <tr><th>[[#explicit-mark-unified|Unified declaration + return syntax]]<td>✅<td>✅<td>✅<td>❌<td>✅<td>❌
+  <tr><th>[[#explicit-mark-declaration-at-function-definition|Variable declaration in the function header]]<td>❌<td>❌<td>❌<td>❌<td>❌<td>❌
+  <tr><th>[[#explicit-mark-function-definition|At function definition]]<td>✅<td>✅<td>❌<td>❌<td>❌<td>❌
+  <tr><th>[[#explicit-mark-function-declaration|At function declaration]]<td>✅<td>✅<td>❌<td>✅<td>❌<td>❌
+  <tr><th>[[#optional-mark]] at variable declaration<td>✅<td>✅<td>✅<td>❌<td>❌<td>✅
+  <tr><th>[[#optional-mark]] at `return` statement<td>✅<td>✅<td>✅<td>❌<td>❌<td>✅
+</table>
 
 ## Alias expressions ## {#alias-expressions}
 
@@ -1434,52 +1731,6 @@ template <typename T>
 struct pin : __pin_holder<T>, __pin_non_movable { };
 </xmp>
 
-## Add an optional mark `[[nrvo_verify]]` ## {#optional-mark}
-
-Sometimes it's useful to assert that a variable is a [$return variable|return variable$] (and of a non-trivially-copyable type, otherwise it is useless). It would allow to catch subtle bugs caused by evolution of code.
-
-Before:
-
-<xmp>
-widget frobnicate() {
-  widget result [[nrvo_verify]];
-  watch(&result);
-  // …
-      if (good()) {
-        return result;
-      }
-  // …
-  return result;
-}
-</xmp>
-
-After:
-
-<xmp>
-widget frobnicate() {
-  widget result [[nrvo_verify]];  // ERROR, good
-  watch(&result);
-  // …
-      if (good()) {
-        return result;
-      } else if (bad()) {
-        return widget();
-      }
-  // …
-  return result;
-}
-</xmp>
-
-<blockquote class="note warning-note">
-Note:
-This idea is different from [[#explicit-mark]]. Here, the mark is optional.
-</blockquote>
-
-<blockquote class="note warning-note">
-Note:
-Note that the same result can be achieved using [[#pin]] without a specialized language feature.
-</blockquote>
-
 ## Allow copy elision for complex expressions ## {#complex-expressions}
 
 Can copy elision be allowed in these cases?
@@ -1501,6 +1752,10 @@ All in all, it seems that the benefits are not worth the additional complexity.
 
 # Acknowledgements # {#acknowledgements}
 
-Thanks to Agustín Bergé, Arthur O'Dwyer, Krystian Stasiowski and everyone else who provided feedback on a draft of this proposal.
+Thanks to Agustín Bergé, Arthur O'Dwyer and Krystian Stasiowski, who provided feedback on a draft of this proposal.
+
+Thanks to Jens Maurer, Hubert Tong and everyone else who participated in discussions on the mailing lists and helped polish the proposal.
+
+Thanks to Sean Parent, who implemented the proposal in his Circle compiler and helped with putting together an implementation strategy for exception handling.
 
 Special thanks to Antony Polukhin for championing the proposal.

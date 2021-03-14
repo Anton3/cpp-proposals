@@ -6,7 +6,7 @@
         {
             "label": "Build nrvo.bs",
             "type": "shell",
-            "command": "python",
+            "command": "python3",
             "args": [
                 "generator/make.py",
                 "${file}"
