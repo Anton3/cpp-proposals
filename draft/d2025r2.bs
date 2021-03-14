@@ -1590,14 +1590,14 @@ This extension can be pursued in a separate follow-up proposal.
       <th>
       <th>The variable can be declared anywhere in the function; multiple return variables
       <th>Allows returning not a return variable on some control flow paths
-      <th>Prohibits a copy when returning trivially-copyables
-      <th>Allows statements within an expression (without lambdas)
+      <th>Allows a copy when returning trivially-copyables
+      <th>Does not invent an entirely new syntactic construct
     </tr></thead>
-    <tr><th>[[#explicit-mark-declaration|At variable declaration]], [[#explicit-mark-return-statement|at return statement]], [[#optional-mark|optional]]<td>✔️<td>✔️<td>❌<td>❌
-    <tr><th>[[#explicit-mark-function-definition|At function definition]]<td>✔️<td>❌<td>❌<td>❌
-    <tr><th>[[#explicit-mark-function-declaration|At function declaration]]<td>✔️<td>❌<td>✔️<td>❌
-    <tr><th>[[#explicit-mark-declaration-at-function-definition|Variable in the function header]]<td>❌<td>❌<td>❌<td>❌
-    <tr><th>[[#explicit-mark-unified|Alias expressions]]<td>✔️<td>✔️<td>❌<td>✔️
+    <tr><th>[[#explicit-mark-declaration|At variable declaration]], [[#explicit-mark-return-statement|at return statement]], [[#optional-mark|optional]]<td>✔️<td>✔️<td>✔️<td>✔️
+    <tr><th>[[#explicit-mark-function-definition|At function definition]]<td>✔️<td>❌<td>✔️<td>✔️
+    <tr><th>[[#explicit-mark-function-declaration|At function declaration]]<td>✔️<td>❌<td>❌<td>✔️
+    <tr><th>[[#explicit-mark-declaration-at-function-definition|Variable in the function header]]<td>❌<td>❌<td>✔️<td>✔️
+    <tr><th>[[#explicit-mark-unified|Alias expressions]]<td>✔️<td>✔️<td>✔️<td>❌
   </table>
 </div>
 

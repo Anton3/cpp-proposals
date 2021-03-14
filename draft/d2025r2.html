@@ -3475,39 +3475,39 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
        <th>
        <th>The variable can be declared anywhere in the function; multiple return variables 
        <th>Allows returning not a return variable on some control flow paths 
-       <th>Prohibits a copy when returning trivially-copyables 
-       <th>Allows statements within an expression (without lambdas) 
+       <th>Allows a copy when returning trivially-copyables 
+       <th>Does not invent an entirely new syntactic construct 
      <tbody>
       <tr>
        <th><a href="#explicit-mark-declaration">At variable declaration</a>, <a href="#explicit-mark-return-statement">at return statement</a>, <a href="#optional-mark">optional</a>
        <td>✔️
        <td>✔️
-       <td>❌
-       <td>❌ 
+       <td>✔️
+       <td>✔️ 
       <tr>
        <th><a href="#explicit-mark-function-definition">At function definition</a>
        <td>✔️
        <td>❌
-       <td>❌
-       <td>❌ 
+       <td>✔️
+       <td>✔️ 
       <tr>
        <th><a href="#explicit-mark-function-declaration">At function declaration</a>
        <td>✔️
        <td>❌
-       <td>✔️
-       <td>❌ 
+       <td>❌
+       <td>✔️ 
       <tr>
        <th><a href="#explicit-mark-declaration-at-function-definition">Variable in the function header</a>
        <td>❌
        <td>❌
-       <td>❌
-       <td>❌ 
+       <td>✔️
+       <td>✔️ 
       <tr>
        <th><a href="#explicit-mark-unified">Alias expressions</a>
        <td>✔️
        <td>✔️
-       <td>❌
-       <td>✔️ 
+       <td>✔️
+       <td>❌ 
     </table>
    </div>
    <h4 class="heading settled" data-level="8.2.12" id="explicit-mark-comparison-targeted"><span class="secno">8.2.12. </span><span class="content">A targeted comparison table of some explicit mark variants</span><a class="self-link" href="#explicit-mark-comparison-targeted"></a></h4>
