@@ -33,16 +33,15 @@ del {
   overflow-y: auto;
   clear: both;
 }
-.comparison {
-  display: block;
-  overflow-x: auto;
-  white-space: nowrap;
+#comparison td, #comparison th {
+  padding: 5px 5px;
+  //width: 300px;
 }
-.comparison td {
-    text-align: center;
+#comparison td {
+  text-align: center;
 }
-.comparison th:first-child {
-    text-align: right;
+#comparison th:first-child {
+  text-align: right;
 }​
 </style>
 
@@ -1572,25 +1571,27 @@ This extension can be pursued in a separate follow-up proposal.
 
 ### A comparison table of explicit mark variants### {#explicit-mark-comparison}
 
-<table class="comparison">
-  <thead>
-    <th>
-    <th>The return variable<br>can be declared anywhere<br>in the function
-    <th>Multiple return variables<br>in same function<br>(in different scopes)
-    <th>Both return variables<br>and potential return<br>variables in the same function
-    <th>Prohibits a copy when<br>returning<br>trivially-copyables
-    <th>Allows statements<br>within an expression<br>(without lambdas)
-    <th>Allows existing code<br>to benefit from<br>guaranteed copy elision
-  </thead>
-  <tr><th>[[#explicit-mark-declaration|At variable declaration]]<td>✅<td>✅<td>✅<td>❌<td>❌<td>❌
-  <tr><th>[[#explicit-mark-return-statement|At return statement]]<td>✅<td>✅<td>✅<td>❌<td>❌<td>❌
-  <tr><th>[[#explicit-mark-unified|Unified declaration + return syntax]]<td>✅<td>✅<td>✅<td>❌<td>✅<td>❌
-  <tr><th>[[#explicit-mark-declaration-at-function-definition|Variable declaration in the function header]]<td>❌<td>❌<td>❌<td>❌<td>❌<td>❌
-  <tr><th>[[#explicit-mark-function-definition|At function definition]]<td>✅<td>✅<td>❌<td>❌<td>❌<td>❌
-  <tr><th>[[#explicit-mark-function-declaration|At function declaration]]<td>✅<td>✅<td>❌<td>✅<td>❌<td>❌
-  <tr><th>[[#optional-mark]] at variable declaration<td>✅<td>✅<td>✅<td>❌<td>❌<td>✅
-  <tr><th>[[#optional-mark]] at `return` statement<td>✅<td>✅<td>✅<td>❌<td>❌<td>✅
-</table>
+<div id="comparison">
+  <table>
+    <thead><tr>
+      <th>
+      <th>The return variable can be declared anywhere in the function
+      <th>Multiple return variables in same function (in different scopes)
+      <th>Both return variables and potential return variables in the same function
+      <th>Prohibits a copy when returning trivially-copyables
+      <th>Allows statements within an expression (without lambdas)
+      <th>Allows existing code to benefit from guaranteed copy elision
+    </tr></thead>
+    <tr><th>[[#explicit-mark-declaration|At variable declaration]]<td> ✔️<td> ✔️<td> ✔️<td>❌<td>❌<td>❌
+    <tr><th>[[#explicit-mark-return-statement|At return statement]]<td> ✔️<td> ✔️<td> ✔️<td>❌<td>❌<td>❌
+    <tr><th>[[#explicit-mark-unified|Alias expressions]]<td> ✔️<td> ✔️<td> ✔️<td>❌<td> ✔️<td>❌
+    <tr><th>[[#explicit-mark-declaration-at-function-definition|Variable in the function header]]<td>❌<td>❌<td>❌<td>❌<td>❌<td>❌
+    <tr><th>[[#explicit-mark-function-definition|At function definition]]<td> ✔️<td> ✔️<td>❌<td>❌<td>❌<td>❌
+    <tr><th>[[#explicit-mark-function-declaration|At function declaration]]<td> ✔️<td> ✔️<td>❌<td> ✔️<td>❌<td>❌
+    <tr><th>[[#optional-mark|Optional]] at variable declaration<td> ✔️<td> ✔️<td> ✔️<td>❌<td>❌<td> ✔️
+    <tr><th>[[#optional-mark|Optional]] at `return` statement<td> ✔️<td> ✔️<td> ✔️<td>❌<td>❌<td>✔️
+  </table>
+</div>
 
 ## Alias expressions ## {#alias-expressions}
 

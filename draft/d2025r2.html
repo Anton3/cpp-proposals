@@ -1575,16 +1575,15 @@ del {
   overflow-y: auto;
   clear: both;
 }
-.comparison {
-  display: block;
-  overflow-x: auto;
-  white-space: nowrap;
+#comparison td, #comparison th {
+  padding: 5px 5px;
+  //width: 300px;
 }
-.comparison td {
-    text-align: center;
+#comparison td {
+  text-align: center;
 }
-.comparison th:first-child {
-    text-align: right;
+#comparison th:first-child {
+  text-align: right;
 }​
 </style>
 <style>/* style-autolinks */
@@ -3459,82 +3458,84 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
 </pre>
    <p>This extension can be pursued in a separate follow-up proposal.</p>
    <h4 class="heading settled" data-level="8.2.11" id="explicit-mark-comparison"><span class="secno">8.2.11. </span><span class="content">A comparison table of explicit mark variants</span><a class="self-link" href="#explicit-mark-comparison"></a></h4>
-   <table class="comparison">
-    <thead>
-     <tr>
-      <th>
-      <th>The return variable<br>can be declared anywhere<br>in the function 
-      <th>Multiple return variables<br>in same function<br>(in different scopes) 
-      <th>Both return variables<br>and potential return<br>variables in the same function 
-      <th>Prohibits a copy when<br>returning<br>trivially-copyables 
-      <th>Allows statements<br>within an expression<br>(without lambdas) 
-      <th>Allows existing code<br>to benefit from<br>guaranteed copy elision 
-    <tbody>
-     <tr>
-      <th><a href="#explicit-mark-declaration">At variable declaration</a>
-      <td>✅
-      <td>✅
-      <td>✅
-      <td>❌
-      <td>❌
-      <td>❌ 
-     <tr>
-      <th><a href="#explicit-mark-return-statement">At return statement</a>
-      <td>✅
-      <td>✅
-      <td>✅
-      <td>❌
-      <td>❌
-      <td>❌ 
-     <tr>
-      <th><a href="#explicit-mark-unified">Unified declaration + return syntax</a>
-      <td>✅
-      <td>✅
-      <td>✅
-      <td>❌
-      <td>✅
-      <td>❌ 
-     <tr>
-      <th><a href="#explicit-mark-declaration-at-function-definition">Variable declaration in the function header</a>
-      <td>❌
-      <td>❌
-      <td>❌
-      <td>❌
-      <td>❌
-      <td>❌ 
-     <tr>
-      <th><a href="#explicit-mark-function-definition">At function definition</a>
-      <td>✅
-      <td>✅
-      <td>❌
-      <td>❌
-      <td>❌
-      <td>❌ 
-     <tr>
-      <th><a href="#explicit-mark-function-declaration">At function declaration</a>
-      <td>✅
-      <td>✅
-      <td>❌
-      <td>✅
-      <td>❌
-      <td>❌ 
-     <tr>
-      <th><a href="#optional-mark">§ 8.2.8 Optional mark</a> at variable declaration
-      <td>✅
-      <td>✅
-      <td>✅
-      <td>❌
-      <td>❌
-      <td>✅ 
-     <tr>
-      <th><a href="#optional-mark">§ 8.2.8 Optional mark</a> at <code class="highlight"><c- k>return</c-></code> statement
-      <td>✅
-      <td>✅
-      <td>✅
-      <td>❌
-      <td>❌
-      <td>✅ 
-   </table>
+   <div id="comparison">
+    <table>
+     <thead>
+      <tr>
+       <th>
+       <th>The return variable can be declared anywhere in the function 
+       <th>Multiple return variables in same function (in different scopes) 
+       <th>Both return variables and potential return variables in the same function 
+       <th>Prohibits a copy when returning trivially-copyables 
+       <th>Allows statements within an expression (without lambdas) 
+       <th>Allows existing code to benefit from guaranteed copy elision 
+     <tbody>
+      <tr>
+       <th><a href="#explicit-mark-declaration">At variable declaration</a>
+       <td> ✔️
+       <td> ✔️
+       <td> ✔️
+       <td>❌
+       <td>❌
+       <td>❌ 
+      <tr>
+       <th><a href="#explicit-mark-return-statement">At return statement</a>
+       <td> ✔️
+       <td> ✔️
+       <td> ✔️
+       <td>❌
+       <td>❌
+       <td>❌ 
+      <tr>
+       <th><a href="#explicit-mark-unified">Alias expressions</a>
+       <td> ✔️
+       <td> ✔️
+       <td> ✔️
+       <td>❌
+       <td> ✔️
+       <td>❌ 
+      <tr>
+       <th><a href="#explicit-mark-declaration-at-function-definition">Variable in the function header</a>
+       <td>❌
+       <td>❌
+       <td>❌
+       <td>❌
+       <td>❌
+       <td>❌ 
+      <tr>
+       <th><a href="#explicit-mark-function-definition">At function definition</a>
+       <td> ✔️
+       <td> ✔️
+       <td>❌
+       <td>❌
+       <td>❌
+       <td>❌ 
+      <tr>
+       <th><a href="#explicit-mark-function-declaration">At function declaration</a>
+       <td> ✔️
+       <td> ✔️
+       <td>❌
+       <td> ✔️
+       <td>❌
+       <td>❌ 
+      <tr>
+       <th><a href="#optional-mark">Optional</a> at variable declaration
+       <td> ✔️
+       <td> ✔️
+       <td> ✔️
+       <td>❌
+       <td>❌
+       <td> ✔️ 
+      <tr>
+       <th><a href="#optional-mark">Optional</a> at <code class="highlight"><c- k>return</c-></code> statement
+       <td> ✔️
+       <td> ✔️
+       <td> ✔️
+       <td>❌
+       <td>❌
+       <td>✔️ 
+    </table>
+   </div>
    <h3 class="heading settled" data-level="8.3" id="alias-expressions"><span class="secno">8.3. </span><span class="content">Alias expressions</span><a class="self-link" href="#alias-expressions"></a></h3>
    <p>Alias expressions would be a new type of expression. An <dfn class="dfn-paneled" data-dfn-type="abstract-op" data-export id="abstract-opdef-alias-expression">alias expression</dfn> would accept a prvalue, execute a block, providing that block a "magical" reference to the result object of that prvalue, and the alias expression would itself be a prvalue with the original result object:</p>
 <pre class="highlight"><c- n>widget</c-> <c- nf>setup_widget</c-><c- p>(</c-><c- b>int</c-> <c- n>x</c-><c- p>)</c-> <c- p>{</c->
