@@ -1608,14 +1608,14 @@ This extension can be pursued in a separate follow-up proposal.
     <thead><tr>
       <th>
       <th>The mark is close to where the magic happens
-      <th>The mark has to be repeated in case of multiple `return` statements
+      <th>The mark does not have to be repeated in case of multiple `return` statements
       <th>Allows existing code to benefit from guaranteed copy elision
       <th>Allows to omit the mark in simple cases
     </tr></thead>
-    <tr><th>[[#explicit-mark-declaration|At variable declaration]]<td>Close<td>❌<td>❌<td>❌
-    <tr><th>[[#optional-mark|Optional]] at variable declaration<td>Close<td>❌<td>✔️<td>✔️
-    <tr><th>[[#explicit-mark-return-statement|At return statement]]<td>Very close<td>✔️<td>❌<td>❌
-    <tr><th>[[#optional-mark|Optional]] at return statement<td>Very close<td>✔️<td>✔️<td>✔️
+    <tr><th>[[#explicit-mark-declaration|At variable declaration]]<td>❌<td>✔️<td>❌<td>❌
+    <tr><th>[[#optional-mark|Optional]] at variable declaration<td>❌<td>✔️<td>✔️<td>✔️
+    <tr><th>[[#explicit-mark-return-statement|At return statement]]<td>✔️<td>❌<td>❌<td>❌
+    <tr><th>[[#optional-mark|Optional]] at return statement<td>✔️<td>❌<td>✔️<td>✔️
   </table>
 </div>
 

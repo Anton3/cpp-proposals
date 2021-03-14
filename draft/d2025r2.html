@@ -3517,32 +3517,32 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
       <tr>
        <th>
        <th>The mark is close to where the magic happens 
-       <th>The mark has to be repeated in case of multiple <code class="highlight"><c- k>return</c-></code> statements 
+       <th>The mark does not have to be repeated in case of multiple <code class="highlight"><c- k>return</c-></code> statements 
        <th>Allows existing code to benefit from guaranteed copy elision 
        <th>Allows to omit the mark in simple cases 
      <tbody>
       <tr>
        <th><a href="#explicit-mark-declaration">At variable declaration</a>
-       <td>Close
        <td>❌
+       <td>✔️
        <td>❌
        <td>❌ 
       <tr>
        <th><a href="#optional-mark">Optional</a> at variable declaration
-       <td>Close
        <td>❌
+       <td>✔️
        <td>✔️
        <td>✔️ 
       <tr>
        <th><a href="#explicit-mark-return-statement">At return statement</a>
-       <td>Very close
        <td>✔️
+       <td>❌
        <td>❌
        <td>❌ 
       <tr>
        <th><a href="#optional-mark">Optional</a> at return statement
-       <td>Very close
        <td>✔️
+       <td>❌
        <td>✔️
        <td>✔️ 
     </table>
