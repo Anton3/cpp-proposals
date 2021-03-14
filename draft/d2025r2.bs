@@ -33,13 +33,14 @@ del {
   overflow-y: auto;
   clear: both;
 }
-#comparison td, #comparison th {
+.comparison td, .comparison th {
   padding: 5px 3px;
+  vertical-align: middle;
 }
-#comparison td {
+.comparison td {
   text-align: center;
 }
-#comparison th:first-child {
+.comparison th:first-child {
   text-align: right;
 }​
 </style>
@@ -1349,7 +1350,20 @@ Cons:
 
 ### A syntax that unifies the variable declaration and the `return` statement ### {#explicit-mark-unified}
 
-For example, [$alias expression|alias expressions$]. The advantage here is maximum clarity, because it's a special language construct dedicated to this language feature. But alias expressions actually are a special case of *statement expressions*, and those aren't expected to be accepted any time soon. Additionally, this is arguably too loud of a syntax for a feature that is not groundbreaking.
+Alias expressions would be a new type of expression. An <dfn dfn-type="abstract-op">alias expression</dfn> would accept a prvalue, execute a block, providing that block a "magical" reference to the result object of that prvalue, and the alias expression would itself be a prvalue with the original result object:
+
+<xmp>
+widget test() {
+  int x = …;
+  return using (w = widget()) {
+    w.set_x(x);
+    // return {};  // error: a return statement is not allowed here
+    w.set_y(42);
+  };
+}
+</xmp>
+
+The advantage here is maximum clarity, because it's a special language construct dedicated to this language feature. But alias expressions actually are a special case of *statement expressions* (an expression that contains statements), and those aren't expected to be accepted any time soon. Additionally, this is arguably too loud of a syntax for a feature that is not groundbreaking.
 
 ### Variable declaration at the function definition ### {#explicit-mark-declaration-at-function-definition}
 
@@ -1568,69 +1582,42 @@ std::optional<widget> foo() {
 
 This extension can be pursued in a separate follow-up proposal.
 
-### A comparison table of explicit mark variants### {#explicit-mark-comparison}
+### The comparison table of explicit mark variants### {#explicit-mark-comparison}
 
-<div id="comparison">
+<div class="comparison">
   <table>
     <thead><tr>
       <th>
-      <th>The return variable can be declared anywhere in the function
-      <th>Multiple return variables in same function (in different scopes)
-      <th>Both return variables and potential return variables in the same function
+      <th>The variable can be declared anywhere in the function; multiple return variables
+      <th>Allows returning not a return variable on some control flow paths
       <th>Prohibits a copy when returning trivially-copyables
       <th>Allows statements within an expression (without lambdas)
-      <th>Allows existing code to benefit from guaranteed copy elision
     </tr></thead>
-    <tr><th>[[#explicit-mark-declaration|At variable declaration]]<td> ✔️<td> ✔️<td> ✔️<td>❌<td>❌<td>❌
-    <tr><th>[[#explicit-mark-return-statement|At return statement]]<td> ✔️<td> ✔️<td> ✔️<td>❌<td>❌<td>❌
-    <tr><th>[[#explicit-mark-unified|Alias expressions]]<td> ✔️<td> ✔️<td> ✔️<td>❌<td> ✔️<td>❌
-    <tr><th>[[#explicit-mark-declaration-at-function-definition|Variable in the function header]]<td>❌<td>❌<td>❌<td>❌<td>❌<td>❌
-    <tr><th>[[#explicit-mark-function-definition|At function definition]]<td> ✔️<td> ✔️<td>❌<td>❌<td>❌<td>❌
-    <tr><th>[[#explicit-mark-function-declaration|At function declaration]]<td> ✔️<td> ✔️<td>❌<td> ✔️<td>❌<td>❌
-    <tr><th>[[#optional-mark|Optional]] at variable declaration<td> ✔️<td> ✔️<td> ✔️<td>❌<td>❌<td> ✔️
-    <tr><th>[[#optional-mark|Optional]] at `return` statement<td> ✔️<td> ✔️<td> ✔️<td>❌<td>❌<td>✔️
+    <tr><th>[[#explicit-mark-declaration|At variable declaration]], [[#explicit-mark-return-statement|at return statement]], [[#optional-mark|optional]]<td>✔️<td>✔️<td>❌<td>❌
+    <tr><th>[[#explicit-mark-function-definition|At function definition]]<td>✔️<td>❌<td>❌<td>❌
+    <tr><th>[[#explicit-mark-function-declaration|At function declaration]]<td>✔️<td>❌<td>✔️<td>❌
+    <tr><th>[[#explicit-mark-declaration-at-function-definition|Variable in the function header]]<td>❌<td>❌<td>❌<td>❌
+    <tr><th>[[#explicit-mark-unified|Alias expressions]]<td>✔️<td>✔️<td>❌<td>✔️
   </table>
 </div>
 
-## Alias expressions ## {#alias-expressions}
+### A targeted comparison table of some explicit mark variants### {#explicit-mark-comparison-targeted}
 
-Alias expressions would be a new type of expression. An <dfn dfn-type="abstract-op">alias expression</dfn> would accept a prvalue, execute a block, providing that block a "magical" reference to the result object of that prvalue, and the alias expression would itself be a prvalue with the original result object:
-
-<xmp>
-widget setup_widget(int x) {
-  return using (w = widget()) {
-    w.set_x(x);
-  };
-}
-</xmp>
-
-Such a construct would require more wording and special cases on the behavior of the "magical" reference `w` and the underlying object. It would be prohibited to `return` from inside the block of the alias expression. More importantly, alias expressions would introduce the precedent of an expression that contains statements, which has issues with a lot of the standard. And as with [[#explicit-mark|explicit marks]], it introduces more syntax, which the proposed solution avoids.
-
-Alias expressions could also be used to get rid of copies in places other than the return expressions, e.g. when passing a function argument by value:
-
-<xmp>
-void consume_widget(widget);
-
-void test(int x) {
-  consume_widget(using (w = widget()) {
-    w.set_x(x);
-  });
-}
-</xmp>
-
-The proposed solution can be used with an immediately invoked lambda expression to perform the same task:
-
-<xmp>
-void consume_widget(widget);
-
-void test(int x) {
-  consume_widget([&] {
-    widget w;
-    w.set_x(x);
-    return w;
-  }());
-}
-</xmp>
+<div class="comparison">
+  <table>
+    <thead><tr>
+      <th>
+      <th>The mark is close to where the magic happens
+      <th>The mark has to be repeated in case of multiple `return` statements
+      <th>Allows existing code to benefit from guaranteed copy elision
+      <th>Allows to omit the mark in simple cases
+    </tr></thead>
+    <tr><th>[[#explicit-mark-declaration|At variable declaration]]<td>Close<td>❌<td>❌<td>❌
+    <tr><th>[[#optional-mark|Optional]] at variable declaration<td>Close<td>❌<td>✔️<td>✔️
+    <tr><th>[[#explicit-mark-return-statement|At return statement]]<td>Very close<td>✔️<td>❌<td>❌
+    <tr><th>[[#optional-mark|Optional]] at return statement<td>Very close<td>✔️<td>✔️<td>✔️
+  </table>
+</div>
 
 # Future work # {#future-work}
 

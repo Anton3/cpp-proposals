@@ -1575,13 +1575,14 @@ del {
   overflow-y: auto;
   clear: both;
 }
-#comparison td, #comparison th {
+.comparison td, .comparison th {
   padding: 5px 3px;
+  vertical-align: middle;
 }
-#comparison td {
+.comparison td {
   text-align: center;
 }
-#comparison th:first-child {
+.comparison th:first-child {
   text-align: right;
 }​
 </style>
@@ -2293,9 +2294,9 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li><a href="#optional-mark"><span class="secno">8.2.8</span> <span class="content">Optional mark</span></a>
         <li><a href="#explicit-mark-trivially-copyables"><span class="secno">8.2.9</span> <span class="content">Trivially-copyables: discussion</span></a>
         <li><a href="#more-nrvo"><span class="secno">8.2.10</span> <span class="content">Guarantee copy elision in more cases: discussion</span></a>
-        <li><a href="#explicit-mark-comparison"><span class="secno">8.2.11</span> <span class="content">A comparison table of explicit mark variants</span></a>
+        <li><a href="#explicit-mark-comparison"><span class="secno">8.2.11</span> <span class="content">The comparison table of explicit mark variants</span></a>
+        <li><a href="#explicit-mark-comparison-targeted"><span class="secno">8.2.12</span> <span class="content">A targeted comparison table of some explicit mark variants</span></a>
        </ol>
-      <li><a href="#alias-expressions"><span class="secno">8.3</span> <span class="content">Alias expressions</span></a>
      </ol>
     <li>
      <a href="#future-work"><span class="secno">9</span> <span class="content">Future work</span></a>
@@ -3276,7 +3277,17 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
      <p>I fail to suggest a syntax as fitting as the <code class="highlight"><c- k>return</c-></code> keyword on the declaration</p>
    </ul>
    <h4 class="heading settled" data-level="8.2.4" id="explicit-mark-unified"><span class="secno">8.2.4. </span><span class="content">A syntax that unifies the variable declaration and the <code class="highlight"><c- k>return</c-></code> statement</span><a class="self-link" href="#explicit-mark-unified"></a></h4>
-   <p>For example, <a data-link-type="abstract-op" href="#abstract-opdef-alias-expression" id="ref-for-abstract-opdef-alias-expression">alias expressions</a>. The advantage here is maximum clarity, because it’s a special language construct dedicated to this language feature. But alias expressions actually are a special case of <em>statement expressions</em>, and those aren’t expected to be accepted any time soon. Additionally, this is arguably too loud of a syntax for a feature that is not groundbreaking.</p>
+   <p>Alias expressions would be a new type of expression. An <dfn data-dfn-type="abstract-op" data-export id="abstract-opdef-alias-expression">alias expression<a class="self-link" href="#abstract-opdef-alias-expression"></a></dfn> would accept a prvalue, execute a block, providing that block a "magical" reference to the result object of that prvalue, and the alias expression would itself be a prvalue with the original result object:</p>
+<pre class="highlight"><c- n>widget</c-> <c- nf>test</c-><c- p>()</c-> <c- p>{</c->
+  <c- b>int</c-> <c- n>x</c-> <c- o>=</c-> …<c- p>;</c->
+  <c- k>return</c-> <c- k>using</c-> <c- p>(</c-><c- n>w</c-> <c- o>=</c-> <c- n>widget</c-><c- p>())</c-> <c- p>{</c->
+    <c- n>w</c-><c- p>.</c-><c- n>set_x</c-><c- p>(</c-><c- n>x</c-><c- p>);</c->
+    <c- c1>// return {};  // error: a return statement is not allowed here</c->
+    <c- n>w</c-><c- p>.</c-><c- n>set_y</c-><c- p>(</c-><c- mi>42</c-><c- p>);</c->
+  <c- p>};</c->
+<c- p>}</c->
+</pre>
+   <p>The advantage here is maximum clarity, because it’s a special language construct dedicated to this language feature. But alias expressions actually are a special case of <em>statement expressions</em> (an expression that contains statements), and those aren’t expected to be accepted any time soon. Additionally, this is arguably too loud of a syntax for a feature that is not groundbreaking.</p>
    <h4 class="heading settled" data-level="8.2.5" id="explicit-mark-declaration-at-function-definition"><span class="secno">8.2.5. </span><span class="content">Variable declaration at the function definition</span><a class="self-link" href="#explicit-mark-declaration-at-function-definition"></a></h4>
 <pre class="highlight"><c- k>auto</c-> <c- nf>test</c-><c- p>()</c-> <c- o>-></c-> <c- k>return</c-><c- p>(</c-><c- n>widget</c-> <c- n>x</c-><c- p>{})</c-> <c- p>{</c->
   <c- n>foo</c-><c- p>(</c-><c- n>x</c-><c- p>);</c->
@@ -3456,114 +3467,86 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
 <c- p>}</c->
 </pre>
    <p>This extension can be pursued in a separate follow-up proposal.</p>
-   <h4 class="heading settled" data-level="8.2.11" id="explicit-mark-comparison"><span class="secno">8.2.11. </span><span class="content">A comparison table of explicit mark variants</span><a class="self-link" href="#explicit-mark-comparison"></a></h4>
-   <div id="comparison">
+   <h4 class="heading settled" data-level="8.2.11" id="explicit-mark-comparison"><span class="secno">8.2.11. </span><span class="content">The comparison table of explicit mark variants</span><a class="self-link" href="#explicit-mark-comparison"></a></h4>
+   <div class="comparison">
     <table>
      <thead>
       <tr>
        <th>
-       <th>The return variable can be declared anywhere in the function 
-       <th>Multiple return variables in same function (in different scopes) 
-       <th>Both return variables and potential return variables in the same function 
+       <th>The variable can be declared anywhere in the function; multiple return variables 
+       <th>Allows returning not a return variable on some control flow paths 
        <th>Prohibits a copy when returning trivially-copyables 
        <th>Allows statements within an expression (without lambdas) 
-       <th>Allows existing code to benefit from guaranteed copy elision 
      <tbody>
       <tr>
-       <th><a href="#explicit-mark-declaration">At variable declaration</a>
-       <td> ✔️
-       <td> ✔️
-       <td> ✔️
+       <th><a href="#explicit-mark-declaration">At variable declaration</a>, <a href="#explicit-mark-return-statement">at return statement</a>, <a href="#optional-mark">optional</a>
+       <td>✔️
+       <td>✔️
+       <td>❌
+       <td>❌ 
+      <tr>
+       <th><a href="#explicit-mark-function-definition">At function definition</a>
+       <td>✔️
        <td>❌
        <td>❌
        <td>❌ 
       <tr>
-       <th><a href="#explicit-mark-return-statement">At return statement</a>
-       <td> ✔️
-       <td> ✔️
-       <td> ✔️
+       <th><a href="#explicit-mark-function-declaration">At function declaration</a>
+       <td>✔️
        <td>❌
-       <td>❌
-       <td>❌ 
-      <tr>
-       <th><a href="#explicit-mark-unified">Alias expressions</a>
-       <td> ✔️
-       <td> ✔️
-       <td> ✔️
-       <td>❌
-       <td> ✔️
+       <td>✔️
        <td>❌ 
       <tr>
        <th><a href="#explicit-mark-declaration-at-function-definition">Variable in the function header</a>
        <td>❌
        <td>❌
        <td>❌
-       <td>❌
-       <td>❌
        <td>❌ 
       <tr>
-       <th><a href="#explicit-mark-function-definition">At function definition</a>
-       <td> ✔️
-       <td> ✔️
-       <td>❌
-       <td>❌
-       <td>❌
-       <td>❌ 
-      <tr>
-       <th><a href="#explicit-mark-function-declaration">At function declaration</a>
-       <td> ✔️
-       <td> ✔️
-       <td>❌
-       <td> ✔️
-       <td>❌
-       <td>❌ 
-      <tr>
-       <th><a href="#optional-mark">Optional</a> at variable declaration
-       <td> ✔️
-       <td> ✔️
-       <td> ✔️
-       <td>❌
-       <td>❌
-       <td> ✔️ 
-      <tr>
-       <th><a href="#optional-mark">Optional</a> at <code class="highlight"><c- k>return</c-></code> statement
-       <td> ✔️
-       <td> ✔️
-       <td> ✔️
-       <td>❌
+       <th><a href="#explicit-mark-unified">Alias expressions</a>
+       <td>✔️
+       <td>✔️
        <td>❌
        <td>✔️ 
     </table>
    </div>
-   <h3 class="heading settled" data-level="8.3" id="alias-expressions"><span class="secno">8.3. </span><span class="content">Alias expressions</span><a class="self-link" href="#alias-expressions"></a></h3>
-   <p>Alias expressions would be a new type of expression. An <dfn class="dfn-paneled" data-dfn-type="abstract-op" data-export id="abstract-opdef-alias-expression">alias expression</dfn> would accept a prvalue, execute a block, providing that block a "magical" reference to the result object of that prvalue, and the alias expression would itself be a prvalue with the original result object:</p>
-<pre class="highlight"><c- n>widget</c-> <c- nf>setup_widget</c-><c- p>(</c-><c- b>int</c-> <c- n>x</c-><c- p>)</c-> <c- p>{</c->
-  <c- k>return</c-> <c- k>using</c-> <c- p>(</c-><c- n>w</c-> <c- o>=</c-> <c- n>widget</c-><c- p>())</c-> <c- p>{</c->
-    <c- n>w</c-><c- p>.</c-><c- n>set_x</c-><c- p>(</c-><c- n>x</c-><c- p>);</c->
-  <c- p>};</c->
-<c- p>}</c->
-</pre>
-   <p>Such a construct would require more wording and special cases on the behavior of the "magical" reference <code class="highlight"><c- n>w</c-></code> and the underlying object. It would be prohibited to <code class="highlight"><c- k>return</c-></code> from inside the block of the alias expression. More importantly, alias expressions would introduce the precedent of an expression that contains statements, which has issues with a lot of the standard. And as with <a href="#explicit-mark">explicit marks</a>, it introduces more syntax, which the proposed solution avoids.</p>
-   <p>Alias expressions could also be used to get rid of copies in places other than the return expressions, e.g. when passing a function argument by value:</p>
-<pre class="highlight"><c- b>void</c-> <c- nf>consume_widget</c-><c- p>(</c-><c- n>widget</c-><c- p>);</c->
-
-<c- b>void</c-> <c- nf>test</c-><c- p>(</c-><c- b>int</c-> <c- n>x</c-><c- p>)</c-> <c- p>{</c->
-  <c- n>consume_widget</c-><c- p>(</c-><c- k>using</c-> <c- p>(</c-><c- n>w</c-> <c- o>=</c-> <c- n>widget</c-><c- p>())</c-> <c- p>{</c->
-    <c- n>w</c-><c- p>.</c-><c- n>set_x</c-><c- p>(</c-><c- n>x</c-><c- p>);</c->
-  <c- p>});</c->
-<c- p>}</c->
-</pre>
-   <p>The proposed solution can be used with an immediately invoked lambda expression to perform the same task:</p>
-<pre class="highlight"><c- b>void</c-> <c- nf>consume_widget</c-><c- p>(</c-><c- n>widget</c-><c- p>);</c->
-
-<c- b>void</c-> <c- nf>test</c-><c- p>(</c-><c- b>int</c-> <c- n>x</c-><c- p>)</c-> <c- p>{</c->
-  <c- n>consume_widget</c-><c- p>([</c-><c- o>&amp;</c-><c- p>]</c-> <c- p>{</c->
-    <c- n>widget</c-> <c- n>w</c-><c- p>;</c->
-    <c- n>w</c-><c- p>.</c-><c- n>set_x</c-><c- p>(</c-><c- n>x</c-><c- p>);</c->
-    <c- k>return</c-> <c- n>w</c-><c- p>;</c->
-  <c- p>}());</c->
-<c- p>}</c->
-</pre>
+   <h4 class="heading settled" data-level="8.2.12" id="explicit-mark-comparison-targeted"><span class="secno">8.2.12. </span><span class="content">A targeted comparison table of some explicit mark variants</span><a class="self-link" href="#explicit-mark-comparison-targeted"></a></h4>
+   <div class="comparison">
+    <table>
+     <thead>
+      <tr>
+       <th>
+       <th>The mark is close to where the magic happens 
+       <th>The mark has to be repeated in case of multiple <code class="highlight"><c- k>return</c-></code> statements 
+       <th>Allows existing code to benefit from guaranteed copy elision 
+       <th>Allows to omit the mark in simple cases 
+     <tbody>
+      <tr>
+       <th><a href="#explicit-mark-declaration">At variable declaration</a>
+       <td>Close
+       <td>❌
+       <td>❌
+       <td>❌ 
+      <tr>
+       <th><a href="#optional-mark">Optional</a> at variable declaration
+       <td>Close
+       <td>❌
+       <td>✔️
+       <td>✔️ 
+      <tr>
+       <th><a href="#explicit-mark-return-statement">At return statement</a>
+       <td>Very close
+       <td>✔️
+       <td>❌
+       <td>❌ 
+      <tr>
+       <th><a href="#optional-mark">Optional</a> at return statement
+       <td>Very close
+       <td>✔️
+       <td>✔️
+       <td>✔️ 
+    </table>
+   </div>
    <h2 class="heading settled" data-level="9" id="future-work"><span class="secno">9. </span><span class="content">Future work</span><a class="self-link" href="#future-work"></a></h2>
    <h3 class="heading settled" data-level="9.1" id="more-elision"><span class="secno">9.1. </span><span class="content">Guarantee some other types of copy elision</span><a class="self-link" href="#more-elision"></a></h3>
    <p><a href="http://eel.is/c++draft/class.copy.elision#1">[class.copy.elision]/1</a> describes 4 cases where copy elision is allowed. Let us review whether it is feasible to guarantee copy elision in those cases:</p>
@@ -3802,7 +3785,7 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
   <h2 class="no-num no-ref heading settled" id="index"><span class="content">Index</span><a class="self-link" href="#index"></a></h2>
   <h3 class="no-num no-ref heading settled" id="index-defined-here"><span class="content">Terms defined by this specification</span><a class="self-link" href="#index-defined-here"></a></h3>
   <ul class="index">
-   <li><a href="#abstract-opdef-alias-expression">alias expression</a><span>, in §8.3</span>
+   <li><a href="#abstract-opdef-alias-expression">alias expression</a><span>, in §8.2.4</span>
    <li><a href="#abstract-opdef-potential-return-variable">potential return variable</a><span>, in §5.1</span>
    <li><a href="#abstract-opdef-return-variable">return variable</a><span>, in §5.1</span>
    <li><a href="#abstract-opdef-to-directly-observe-a-variable">to directly observe a variable</a><span>, in §5.1</span>
@@ -3887,12 +3870,6 @@ Guaranteed copy elision will only affect exceptions caught by value ("by copy").
     <li><a href="#ref-for-abstract-opdef-return-variable①⑦">8.2. Require an explicit mark for return variables</a>
     <li><a href="#ref-for-abstract-opdef-return-variable①⑧">8.2.6. A mark on the function definition</a>
     <li><a href="#ref-for-abstract-opdef-return-variable①⑨">9.6. Allow copy elision for complex expressions</a>
-   </ul>
-  </aside>
-  <aside class="dfn-panel" data-for="abstract-opdef-alias-expression">
-   <b><a href="#abstract-opdef-alias-expression">#abstract-opdef-alias-expression</a></b><b>Referenced in:</b>
-   <ul>
-    <li><a href="#ref-for-abstract-opdef-alias-expression">8.2.4. A syntax that unifies the variable declaration and the return statement</a>
    </ul>
   </aside>
 <script>/* script-dfn-panel */
