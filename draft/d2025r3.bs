@@ -531,7 +531,7 @@ const volatile widget foo() {
   a.mutate();  // OK
   return a;
 }
-auto b = foo();
+auto&& b = foo();
 
 widget bar() {
   if (…) {
