@@ -543,7 +543,7 @@ widget bar() {
   volatile widget d;
   return d;  //!
 }
-auto e = foo();
+auto e = bar();
 
 void baz() {
   // b.mutate();  // ERROR
@@ -552,7 +552,7 @@ void baz() {
 }
 </xmp>
 
-- ✗ Move (possibly elided) at line 4. Copy (potentially elided) at line 13. Copy at line 16 (copy elision and implicit move are not allowed)
+- ✗ Move (possibly elided) at line 4. Copy (possibly elided) at line 13. Copy at line 16 (copy elision and implicit move are not allowed)
 - ✓ No copies or moves needed at lines 4 and 13 ("guaranteed NRVO"). Copy at line 16 (copy elision and implicit move are not allowed)
 
 ### Example 20 ### {#ex-20}
